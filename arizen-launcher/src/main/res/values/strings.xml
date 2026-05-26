@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Arizen Launcher</string>
+    <string name="ai_greeting">How can I help you today?</string>
+    <string name="ai_name">Arizen</string>
+    <string name="settings_title">Arizen Settings</string>
+    <string name="ai_thinking">Arizen is thinking…</string>
+    <string name="api_key_hint">Enter your API key</string>
+    <string name="provider_groq">Groq</string>
+    <string name="provider_together">Together AI</string>
+    <string name="provider_openai">OpenAI Compatible</string>
+    <string name="provider_cloudflare">Cloudflare AI</string>
+    <string name="provider_ollama">Ollama (Remote)</string>
+</resources>
