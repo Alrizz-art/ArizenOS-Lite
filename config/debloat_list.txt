@@ -1,0 +1,74 @@
+# ArizenOS Lite — Samsung Debloat List for SM-T295
+# Lines starting with # are comments
+# Format: package folder name (in /system/app or /system/priv-app)
+# SAFE TO REMOVE — tested on SM-T295
+
+# ─── Samsung Bloatware ───────────────────────────────────────────────────────
+SamsungPass
+SamsungPayStub
+SamsungPay_Wear
+Bixby
+BixbyVision
+BixbyRecommendation
+BixbyRoutines
+VoiceWakeUp
+VoiceWakeUp_2.0
+HiQMusic
+Samsung_Music
+SamsungBrowser
+SamsungBrowser_5.4
+
+# ─── Facebook ────────────────────────────────────────────────────────────────
+Facebook
+FBAppManager_NS
+FBServices
+FBInstaller_NS
+FBContentProvider
+Messenger
+
+# ─── Samsung Telemetry & Analytics ──────────────────────────────────────────
+SamsungAnalyticsCloud
+SamsungPositioning
+DiagMonAgent
+HqsTelemetry
+SamsungRewardsThirdParty
+
+# ─── Duplicate Samsung Apps ──────────────────────────────────────────────────
+Gallery2
+SamsungCamera2
+VideoPlayer
+SamsungEmail
+SamsungCalendar
+SamsungContacts2
+SamsungDialer
+SamsungCalculator
+
+# ─── Unnecessary Background Services ────────────────────────────────────────
+AutoDoodle
+StickerCenter
+PersonalityChat
+ChatON
+GameHome
+GameLauncher
+
+# ─── Samsung Kids & Extras ───────────────────────────────────────────────────
+KidsMode
+KidsModeChild
+KidsHome
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+UnifiedDaemon
+SamsungFindMyMobile
+SecureFolder
+Knox_EA
+KnoxGuard
+
+# ─── DO NOT REMOVE — CRITICAL ────────────────────────────────────────────────
+# SystemUI
+# TelephonyUI
+# SecSettings
+# SettingsReceiver
+# SamsungIME
+# InputDevices
+# DownloadProvider
+# MediaProvider
