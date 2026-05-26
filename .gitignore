@@ -1,0 +1,24 @@
+# Build output
+output/
+work/
+firmware/
+arizen-assets/*.apk
+*.tar.md5
+
+# Android
+*.class
+*.jar
+*.apk
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# Logs
+*.log
