@@ -1,0 +1,58 @@
+{
+  "arizen_ai": {
+    "version": "1.0",
+    "description": "Arizen Core AI configuration",
+    "providers": {
+      "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "models": ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+        "default_model": "llama-3.1-8b-instant",
+        "streaming": true
+      },
+      "together_ai": {
+        "base_url": "https://api.together.xyz/v1",
+        "models": ["meta-llama/Llama-3-8b-chat-hf", "mistralai/Mistral-7B-Instruct-v0.1"],
+        "default_model": "meta-llama/Llama-3-8b-chat-hf",
+        "streaming": true
+      },
+      "openai_compatible": {
+        "base_url": "https://api.openai.com/v1",
+        "models": ["gpt-4o-mini", "gpt-3.5-turbo"],
+        "default_model": "gpt-4o-mini",
+        "streaming": true
+      },
+      "cloudflare_ai": {
+        "base_url": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+        "models": ["@cf/meta/llama-3-8b-instruct", "@cf/mistral/mistral-7b-instruct-v0.1"],
+        "default_model": "@cf/meta/llama-3-8b-instruct",
+        "streaming": false
+      },
+      "ollama": {
+        "base_url": "http://localhost:11434/v1",
+        "models": ["llama3", "mistral", "phi3"],
+        "default_model": "llama3",
+        "streaming": true,
+        "note": "Remote server only — no local LLMs on device"
+      }
+    },
+    "tools": [
+      "AppLauncherTool",
+      "NotificationTool",
+      "WifiTool",
+      "BluetoothTool",
+      "ClipboardTool",
+      "BrowserTool",
+      "FileSearchTool",
+      "SettingsTool",
+      "AutomationTool"
+    ],
+    "settings": {
+      "streaming": true,
+      "max_tokens": 2048,
+      "temperature": 0.7,
+      "system_prompt": "You are Arizen, an intelligent AI assistant embedded in ArizenOS Lite — a premium AI-native tablet OS for the Samsung Galaxy Tab A 8.0. You are calm, precise, and helpful. You can control device functions through tools. Always be concise and efficient.",
+      "voice_enabled": true,
+      "ambient_mode": true
+    }
+  }
+}
