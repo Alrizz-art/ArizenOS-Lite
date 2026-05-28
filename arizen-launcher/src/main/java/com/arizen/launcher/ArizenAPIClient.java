@@ -5,34 +5,55 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.*;
 
-/**
- * ArizenOS Lite — API Client
- * OpenAI-compatible REST client (works with Groq, Together, OpenAI, Cloudflare, Ollama)
- */
 public class ArizenAPIClient {
     private static final int TIMEOUT_MS = 30000;
+    private static final int MAX_HISTORY = 10; // keep last N exchanges
+
+    // Conversation history (in-memory, per-session)
+    private static final JSONArray history = new JSONArray();
+
+    public static void clearHistory() {
+        while (history.length() > 0) try { history.remove(0); } catch (Exception e) { break; }
+    }
 
     public static String chat(String baseUrl, String apiKey, String model,
-                               String toolDescriptions, String userMessage) throws Exception {
+                               String toolDescriptions, String userMessage,
+                               String contextInfo) throws Exception {
         if (apiKey == null || apiKey.isEmpty())
-            throw new IllegalStateException("API key not configured");
+            throw new IllegalStateException("API key belum dikonfigurasi. Buka Arizen Settings.");
 
         JSONObject payload = new JSONObject();
         payload.put("model", model);
         payload.put("stream", false);
-        payload.put("max_tokens", 512);
+        payload.put("max_tokens", 1024);
         payload.put("temperature", 0.7);
 
         String systemPrompt =
-            "You are Arizen, an intelligent AI assistant embedded in ArizenOS Lite — " +
-            "a premium AI-native tablet OS for the Samsung Galaxy Tab A 8.0. " +
-            "You are calm, precise, and helpful. When you want to control the device, " +
-            "use tool syntax: [ToolName:parameter]. " +
-            "Available tools: " + toolDescriptions;
+            "Kamu adalah Arizen — AI agent canggih yang tertanam di ArizenOS Lite, " +
+            "sistem operasi Android buatan ArizenLabs untuk Samsung Galaxy Tab A (SM-T295). " +
+            "Kamu cerdas, ringkas, dan bisa mengontrol device langsung.\n\n" +
+            "KONTEKS DEVICE SAAT INI:\n" + contextInfo + "\n\n" +
+            "TOOLS YANG TERSEDIA (gunakan sintaks [NamaTool:parameter]):\n" +
+            toolDescriptions + "\n\n" +
+            "ATURAN:\n" +
+            "- Jawab dalam Bahasa Indonesia kecuali user pakai bahasa lain\n" +
+            "- Kalau user minta aksi (buka app, set alarm, dll), langsung jalankan tool-nya\n" +
+            "- Setelah tool call, jelaskan apa yang sudah dilakukan\n" +
+            "- Ringkas dan to the point — ini OS, bukan chatbot\n" +
+            "- Untuk perhitungan, gunakan CalculatorTool\n" +
+            "- Untuk info RAM/sistem, gunakan SystemInfoTool atau RamBoosterTool";
 
         JSONArray messages = new JSONArray();
         messages.put(new JSONObject().put("role", "system").put("content", systemPrompt));
-        messages.put(new JSONObject().put("role", "user").put("content", userMessage));
+
+        // Add conversation history
+        for (int i = 0; i < history.length(); i++) {
+            messages.put(history.getJSONObject(i));
+        }
+
+        // Add current message
+        JSONObject userMsg = new JSONObject().put("role", "user").put("content", userMessage);
+        messages.put(userMsg);
         payload.put("messages", messages);
 
         String endpoint = baseUrl.endsWith("/") ? baseUrl + "chat/completions"
@@ -48,15 +69,13 @@ public class ArizenAPIClient {
 
         byte[] body = payload.toString().getBytes("UTF-8");
         conn.setRequestProperty("Content-Length", String.valueOf(body.length));
-
         try (OutputStream os = conn.getOutputStream()) { os.write(body); }
 
         int code = conn.getResponseCode();
         InputStream is = (code >= 400) ? conn.getErrorStream() : conn.getInputStream();
         StringBuilder sb = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
+            String line; while ((line = br.readLine()) != null) sb.append(line);
         }
 
         JSONObject resp = new JSONObject(sb.toString());
@@ -67,9 +86,15 @@ public class ArizenAPIClient {
             throw new IOException("API error " + code + ": " + err);
         }
 
-        return resp.getJSONArray("choices")
-            .getJSONObject(0)
-            .getJSONObject("message")
-            .getString("content");
+        String reply = resp.getJSONArray("choices")
+            .getJSONObject(0).getJSONObject("message").getString("content");
+
+        // Save to history
+        history.put(userMsg);
+        history.put(new JSONObject().put("role", "assistant").put("content", reply));
+        // Trim history to MAX_HISTORY exchanges (2 msgs each)
+        while (history.length() > MAX_HISTORY * 2) history.remove(0);
+
+        return reply;
     }
 }
