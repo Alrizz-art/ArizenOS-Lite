@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Arizen Launcher</string>
-    <string name="ai_greeting">How can I help you today?</string>
-    <string name="ai_name">Arizen</string>
-    <string name="settings_title">Arizen Settings</string>
-    <string name="ai_thinking">Arizen is thinking…</string>
-    <string name="api_key_hint">Enter your API key</string>
-    <string name="provider_groq">Groq</string>
-    <string name="provider_together">Together AI</string>
-    <string name="provider_openai">OpenAI Compatible</string>
-    <string name="provider_cloudflare">Cloudflare AI</string>
-    <string name="provider_ollama">Ollama (Remote)</string>
+    <string name="arizen_greeting_morning">Selamat pagi. Siap membantu.</string>
+    <string name="arizen_greeting_day">Halo. Ada yang bisa saya bantu?</string>
+    <string name="arizen_greeting_evening">Selamat malam. Apa yang kamu butuhkan?</string>
+    <string name="arizen_hint">Tanya Arizen&#8230;</string>
+    <string name="arizen_thinking">Arizen sedang memproses&#8230;</string>
+    <string name="arizen_no_key">API key belum dikonfigurasi.\nBuka Pengaturan &#8594; AI &#8594; API Key.</string>
+    <string name="labs_title">ArizenLabs</string>
+    <string name="labs_subtitle">Fitur Eksperimental</string>
+    <string name="settings_title">Pengaturan Arizen</string>
+    <string name="btn_save">Simpan</string>
+    <string name="btn_test">Uji Koneksi</string>
+    <string name="status_saved">&#10003; Tersimpan</string>
+    <string name="status_ok">&#10003; Koneksi berhasil!</string>
+    <string name="status_fail">&#10007; Gagal: </string>
 </resources>
