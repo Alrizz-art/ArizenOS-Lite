@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.arizen.launcher"
-    android:versionCode="3"
+    android:versionCode="4"
     android:versionName="1.0">
 
     <uses-sdk
@@ -13,12 +13,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-    <!-- Voice -->
+    <!-- Voice / Mic -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <!-- Device -->
     <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
@@ -44,10 +45,11 @@
             </intent-filter>
         </activity>
 
-        <!-- Arizen AI Assistant (with voice) -->
+        <!-- Arizen AI Assistant (voice-capable) -->
         <activity
             android:name=".ArizenAssistantActivity"
             android:theme="@style/ArizenAssistantTheme"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize|stateVisible"
             android:exported="false"/>
 
@@ -63,12 +65,18 @@
             android:label="@string/settings_title"
             android:exported="false"/>
 
+        <!-- Wake Word Service (foreground) -->
+        <service
+            android:name=".ArizenWakeService"
+            android:foregroundServiceType="microphone"
+            android:exported="false"/>
+
         <!-- Ambient Service -->
         <service
             android:name=".ArizenAmbientService"
             android:exported="false"/>
 
-        <!-- Boot receiver -->
+        <!-- Boot receiver — auto-start wake service after boot -->
         <receiver
             android:name=".ArizenBootReceiver"
             android:exported="false">
