@@ -36,6 +36,13 @@ public class ArizenSettings {
         }
     }
 
+    // Voice
+    public void setWakeWordEnabled(boolean v) { prefs.edit().putBoolean("wake_word", v).apply(); }
+    public boolean isWakeWordEnabled()        { return prefs.getBoolean("wake_word", false); }
+
+    public void setAutoSpeakEnabled(boolean v){ prefs.edit().putBoolean("auto_speak", v).apply(); }
+    public boolean isAutoSpeakEnabled()       { return prefs.getBoolean("auto_speak", true); }
+
     // Ambient / Labs
     public void setAmbienceEnabled(boolean v) { prefs.edit().putBoolean("ambience", v).apply(); }
     public boolean isAmbienceEnabled()        { return prefs.getBoolean("ambience", false); }
