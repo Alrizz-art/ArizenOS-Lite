@@ -5,83 +5,130 @@
     android:background="@color/bg_primary"
     android:orientation="vertical">
 
-    <!-- Header -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="64dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="20dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
         android:background="@color/bg_surface">
-
-        <View
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:background="@drawable/ai_bubble_bg"/>
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            android:text="Arizen"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"/>
-
-        <TextView
+        <TextView android:id="@+id/btn_back"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI"
-            android:textColor="@color/accent_blue"
-            android:textSize="11sp"
-            android:background="@drawable/badge_bg"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"/>
+            android:text="&lt;"
+            android:textColor="@color/text_secondary"
+            android:textSize="26sp"
+            android:paddingEnd="16dp"
+            android:clickable="true"
+            android:focusable="true"/>
+        <View android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/ai_bubble_bg"/>
+        <LinearLayout android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+            <TextView android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Arizen"
+                android:textColor="@color/text_primary"
+                android:textSize="17sp"
+                android:fontFamily="sans-serif-medium"/>
+            <TextView android:id="@+id/tv_status_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Online"
+                android:textColor="@color/accent_green"
+                android:textSize="11sp"
+                android:fontFamily="sans-serif-light"/>
+        </LinearLayout>
+        <TextView android:id="@+id/btn_labs_shortcut"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Labs >"
+            android:textColor="@color/accent_labs"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:clickable="true"
+            android:focusable="true"/>
     </LinearLayout>
 
-    <!-- Response area -->
-    <ScrollView
-        android:id="@+id/scroll_view"
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:background="@color/graphite_dark"/>
+
+    <ScrollView android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="20dp">
-
-        <TextView
-            android:id="@+id/response_view"
+        android:padding="16dp"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+        <LinearLayout android:id="@+id/chat_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:lineSpacingMultiplier="1.5"
-            android:fontFamily="sans-serif-light"
-            android:text="Halo! Ketik sesuatu untuk mulai…"/>
+            android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp"
+                android:gravity="start">
+                <View android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:background="@drawable/ai_bubble_bg"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginTop="4dp"/>
+                <LinearLayout android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Arizen"
+                        android:textColor="@color/accent_blue"
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginBottom="4dp"/>
+                    <TextView android:id="@+id/response_view"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/card_bg"
+                        android:padding="14dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:lineSpacingMultiplier="1.6"
+                        android:fontFamily="sans-serif-light"
+                        android:text="Halo! Saya Arizen, asisten AI kamu di ArizenOS Lite. Ketik apa saja untuk memulai."/>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
     </ScrollView>
 
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/graphite_mid"/>
-
-    <!-- Input -->
-    <LinearLayout
+    <TextView android:id="@+id/tv_typing"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="  Arizen sedang mengetik..."
+        android:textColor="@color/accent_blue"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif-light"
+        android:paddingStart="20dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone"/>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:background="@color/graphite_dark"/>
+
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:padding="12dp"
         android:gravity="center_vertical"
         android:background="@color/bg_surface">
-
-        <EditText
-            android:id="@+id/input_field"
+        <EditText android:id="@+id/input_field"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Tanya Arizen…"
+            android:hint="@string/arizen_hint"
             android:hintTextColor="@color/text_tertiary"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
@@ -90,18 +137,17 @@
             android:paddingEnd="16dp"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
-            android:inputType="text"
+            android:inputType="textMultiLine|textCapSentences"
             android:imeOptions="actionSend"
-            android:maxLines="3"/>
-
-        <Button
-            android:id="@+id/btn_send"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="12dp"
-            android:text="→"
-            android:textColor="@color/text_primary"
+            android:maxLines="4"
+            android:fontFamily="sans-serif-light"/>
+        <Button android:id="@+id/btn_send"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="10dp"
             android:background="@drawable/send_btn_bg"
-            android:textSize="20sp"/>
+            android:text=">"
+            android:textColor="@color/bg_primary"
+            android:textSize="18sp"/>
     </LinearLayout>
 </LinearLayout>
