@@ -10,8 +10,8 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
-import android.view.animation.ScaleAnimation;
 import android.view.animation.Animation;
+import android.view.animation.ScaleAnimation;
 import android.widget.*;
 
 public class ArizenAssistantActivity extends Activity {
@@ -19,18 +19,18 @@ public class ArizenAssistantActivity extends Activity {
     private static final int REQ_RECORD_AUDIO = 101;
 
     private EditText inputField;
-    private TextView tvTyping, tvStatusBar;
+    private TextView tvTyping, tvStatusBar, responseView;
     private ScrollView scrollView;
     private Button btnSend;
     private ImageButton btnMic;
     private View micRipple;
     private Switch swAutoSpeak;
     private LinearLayout chatContainer;
-    private TextView btnBack, btnLabsShortcut, responseView;
+    private TextView btnBack, btnLabsShortcut;
 
-    private ArizenAIBridge aiBridge;
+    private ArizenAIBridge    aiBridge;
     private ArizenVoiceEngine voiceEngine;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Handler     mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,17 +54,30 @@ public class ArizenAssistantActivity extends Activity {
 
         initVoiceEngine();
 
+        ArizenSettings settings = new ArizenSettings(this);
+        swAutoSpeak.setChecked(settings.isAutoSpeakEnabled());
+        swAutoSpeak.setOnCheckedChangeListener((b, checked) -> {
+            settings.setAutoSpeakEnabled(checked);
+            if (voiceEngine != null) voiceEngine.setAutoSpeak(checked);
+        });
+
         if (!aiBridge.isConfigured()) {
             responseView.setText(getString(R.string.arizen_no_key));
             tvStatusBar.setText("Konfigurasi API key dulu");
             tvStatusBar.setTextColor(0xFFFF4444);
         }
 
-        // Handle prefill from Labs quick actions
+        // Handle prefill from Labs
         String prefill = getIntent().getStringExtra("prefill");
         if (prefill != null && !prefill.isEmpty()) {
             inputField.setText(prefill);
             inputField.setSelection(prefill.length());
+        }
+
+        // Auto-start voice if launched by wake word
+        boolean voiceMode = getIntent().getBooleanExtra("voice_mode", false);
+        if (voiceMode) {
+            mainHandler.postDelayed(this::handleMicTap, 600); // small delay for activity to settle
         }
 
         btnBack.setOnClickListener(v -> finish());
@@ -72,20 +85,26 @@ public class ArizenAssistantActivity extends Activity {
             startActivity(new Intent(this, ArizenLabsActivity.class)));
         btnSend.setOnClickListener(v -> sendMessage());
         inputField.setOnEditorActionListener((v, actionId, event) -> { sendMessage(); return true; });
-
         btnMic.setOnClickListener(v -> handleMicTap());
-
-        swAutoSpeak.setChecked(true);
-        swAutoSpeak.setOnCheckedChangeListener((b, checked) -> {
-            if (voiceEngine != null) voiceEngine.setAutoSpeak(checked);
-        });
     }
 
-    // ── Voice Engine setup ────────────────────────────────────────────────────
+    // ── New intent (re-use if already open) ───────────────────────────────
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        boolean voiceMode = intent.getBooleanExtra("voice_mode", false);
+        if (voiceMode && voiceEngine != null
+                && voiceEngine.getState() == ArizenVoiceEngine.VoiceState.IDLE) {
+            mainHandler.postDelayed(this::handleMicTap, 400);
+        }
+    }
+
+    // ── Voice Engine ─────────────────────────────────────────────────────
     private void initVoiceEngine() {
         voiceEngine = new ArizenVoiceEngine(this, new ArizenVoiceEngine.VoiceCallback() {
-            @Override public void onStateChange(ArizenVoiceEngine.VoiceState state) {
-                mainHandler.post(() -> updateVoiceUI(state));
+            @Override public void onStateChange(ArizenVoiceEngine.VoiceState s) {
+                mainHandler.post(() -> updateVoiceUI(s));
             }
             @Override public void onResult(String text) {
                 mainHandler.post(() -> {
@@ -98,6 +117,10 @@ public class ArizenAssistantActivity extends Activity {
                     tvStatusBar.setText(error);
                     tvStatusBar.setTextColor(0xFFFF4444);
                     setMicIdle();
+                    mainHandler.postDelayed(() -> {
+                        tvStatusBar.setText("Online");
+                        tvStatusBar.setTextColor(0xFF44FF88);
+                    }, 3000);
                 });
             }
             @Override public void onSpeakDone() {
@@ -108,7 +131,6 @@ public class ArizenAssistantActivity extends Activity {
             }
             @Override public void onRmsChanged(float rms) {
                 mainHandler.post(() -> {
-                    // Scale ripple ring based on mic input level
                     float scale = 1.0f + (rms / 10f) * 0.6f;
                     micRipple.setScaleX(scale);
                     micRipple.setScaleY(scale);
@@ -116,9 +138,11 @@ public class ArizenAssistantActivity extends Activity {
                 });
             }
         });
+        ArizenSettings settings = new ArizenSettings(this);
+        voiceEngine.setAutoSpeak(settings.isAutoSpeakEnabled());
     }
 
-    // ── Mic tap handler ───────────────────────────────────────────────────────
+    // ── Mic tap ───────────────────────────────────────────────────────────
     private void handleMicTap() {
         if (voiceEngine == null) return;
         switch (voiceEngine.getState()) {
@@ -138,7 +162,6 @@ public class ArizenAssistantActivity extends Activity {
                 voiceEngine.stopSpeaking();
                 break;
             case PROCESSING:
-                // Do nothing while processing
                 break;
         }
     }
@@ -149,12 +172,12 @@ public class ArizenAssistantActivity extends Activity {
                 && grants[0] == PackageManager.PERMISSION_GRANTED) {
             voiceEngine.startListening();
         } else {
-            tvStatusBar.setText("Izin mikrofon ditolak");
+            tvStatusBar.setText("Izin mikrofon ditolak — voice tidak bisa digunakan");
             tvStatusBar.setTextColor(0xFFFF4444);
         }
     }
 
-    // ── Voice UI state ────────────────────────────────────────────────────────
+    // ── Voice UI ──────────────────────────────────────────────────────────
     private void updateVoiceUI(ArizenVoiceEngine.VoiceState state) {
         switch (state) {
             case IDLE:
@@ -189,17 +212,17 @@ public class ArizenAssistantActivity extends Activity {
         btnMic.setImageResource(android.R.drawable.ic_btn_speak_now);
         btnMic.clearColorFilter();
         micRipple.setVisibility(View.INVISIBLE);
-        micRipple.setScaleX(1f);
-        micRipple.setScaleY(1f);
+        micRipple.setScaleX(1f); micRipple.setScaleY(1f);
         micRipple.clearAnimation();
         btnMic.clearAnimation();
+        tvStatusBar.setText("Online");
+        tvStatusBar.setTextColor(0xFF44FF88);
     }
 
     private void startMicPulse() {
         ScaleAnimation pulse = new ScaleAnimation(
             0.9f, 1.1f, 0.9f, 1.1f,
-            Animation.RELATIVE_TO_SELF, 0.5f,
-            Animation.RELATIVE_TO_SELF, 0.5f);
+            Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
         pulse.setDuration(600);
         pulse.setRepeatMode(Animation.REVERSE);
         pulse.setRepeatCount(Animation.INFINITE);
@@ -214,13 +237,13 @@ public class ArizenAssistantActivity extends Activity {
         micRipple.startAnimation(pulse);
     }
 
-    // ── Send message ──────────────────────────────────────────────────────────
+    // ── Send ──────────────────────────────────────────────────────────────
     private void sendMessage() {
         String input = inputField.getText().toString().trim();
         if (input.isEmpty()) return;
         inputField.setText("");
         btnSend.setEnabled(false);
-        voiceEngine.stopSpeaking();
+        if (voiceEngine != null) voiceEngine.stopSpeaking();
 
         addUserBubble(input);
         tvTyping.setVisibility(View.VISIBLE);
@@ -231,12 +254,15 @@ public class ArizenAssistantActivity extends Activity {
             @Override public void onResponse(String response) {
                 mainHandler.post(() -> {
                     tvTyping.setVisibility(View.GONE);
-                    tvStatusBar.setText(voiceEngine.isAutoSpeak() ? "Berbicara…" : "Online");
-                    tvStatusBar.setTextColor(0xFF44FF88);
                     addArizenBubble(response);
                     scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
                     btnSend.setEnabled(true);
-                    if (voiceEngine.isAutoSpeak()) voiceEngine.speak(response);
+                    if (voiceEngine != null && voiceEngine.isAutoSpeak()) {
+                        voiceEngine.speak(response);
+                    } else {
+                        tvStatusBar.setText("Online");
+                        tvStatusBar.setTextColor(0xFF44FF88);
+                    }
                 });
             }
             @Override public void onError(String error) {
@@ -251,12 +277,15 @@ public class ArizenAssistantActivity extends Activity {
         });
     }
 
-    // ── Bubble builders ───────────────────────────────────────────────────────
+    // ── Bubbles ───────────────────────────────────────────────────────────
     private void addUserBubble(String text) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.END);
-        setMargins(row, 0, 0, 0, dpToPx(12));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dpToPx(12));
+        row.setLayoutParams(lp);
 
         TextView bubble = new TextView(this);
         bubble.setText(text);
@@ -274,7 +303,10 @@ public class ArizenAssistantActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.START);
-        setMargins(row, 0, 0, 0, dpToPx(16));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dpToPx(16));
+        row.setLayoutParams(lp);
 
         View dot = new View(this);
         dot.setBackgroundColor(0xFF4A9EFF);
@@ -291,7 +323,10 @@ public class ArizenAssistantActivity extends Activity {
         label.setText("Arizen");
         label.setTextColor(0xFF4A9EFF);
         label.setTextSize(11);
-        setMargins(label, 0, 0, 0, dpToPx(4));
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        llp.setMargins(0, 0, 0, dpToPx(4));
+        label.setLayoutParams(llp);
 
         TextView bubble = new TextView(this);
         bubble.setText(text);
@@ -309,14 +344,7 @@ public class ArizenAssistantActivity extends Activity {
         fadeIn(row, 300);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-    private void setMargins(View v, int l, int t, int r, int b) {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        p.setMargins(l, t, r, b);
-        v.setLayoutParams(p);
-    }
-
+    // ── Helpers ───────────────────────────────────────────────────────────
     private void fadeIn(View v, int ms) {
         AlphaAnimation a = new AlphaAnimation(0f, 1f);
         a.setDuration(ms);
