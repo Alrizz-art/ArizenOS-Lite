@@ -1,59 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="#000000">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical">
 
         <!-- Header -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="#0A0A0A">
-            <TextView
-                android:id="@+id/btn_back"
-                android:layout_width="wrap_content"
+        <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:paddingStart="16dp" android:paddingEnd="16dp" android:background="#0A0A0A">
+            <TextView android:id="@+id/btn_back" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:text="←"
+                android:textColor="#4A9EFF" android:textSize="20sp" android:padding="8dp"
+                android:clickable="true" android:focusable="true"/>
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="ArizenLabs"
+                android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"
+                android:gravity="center" android:letterSpacing="0.05"/>
+            <Switch android:id="@+id/switch_ambience" android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="←"
-                android:textColor="#4A9EFF"
-                android:textSize="20sp"
-                android:padding="8dp"/>
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="ArizenLabs"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:letterSpacing="0.05"/>
-            <Switch
-                android:id="@+id/switch_ambience"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:thumbTint="#00D4AA"
-                android:trackTint="#0D2A25"/>
+                android:thumbTint="#00D4AA" android:trackTint="#0D2A25"/>
         </LinearLayout>
 
-        <!-- System Bar (live) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="#080808"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
+        <!-- Live system bar -->
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:background="#080808"
+            android:paddingStart="20dp" android:paddingEnd="20dp"
+            android:paddingTop="10dp" android:paddingBottom="10dp">
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
                 android:layout_weight="1" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -75,19 +48,17 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Quick AI Shortcuts -->
+        <!-- Quick AI -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="  QUICK AI" android:textColor="#4A9EFF" android:textSize="11sp"
             android:textStyle="bold" android:letterSpacing="0.15"
             android:paddingTop="16dp" android:paddingBottom="6dp" android:paddingStart="20dp"
             android:background="#000000"/>
-
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
             android:paddingBottom="12dp" android:background="#000000">
-
-            <LinearLayout android:id="@+id/quick_summarize"
-                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/quick_summarize" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/labs_card_bg" android:layout_marginEnd="6dp"
                 android:clickable="true" android:focusable="true">
@@ -96,9 +67,8 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="dari clipboard" android:textColor="#66FFFFFF" android:textSize="10sp"/>
             </LinearLayout>
-
-            <LinearLayout android:id="@+id/quick_translate"
-                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/quick_translate" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/labs_card_bg" android:layout_marginEnd="6dp"
                 android:clickable="true" android:focusable="true">
@@ -107,9 +77,8 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="dari clipboard" android:textColor="#66FFFFFF" android:textSize="10sp"/>
             </LinearLayout>
-
-            <LinearLayout android:id="@+id/quick_code"
-                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/quick_code" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/labs_card_bg" android:layout_marginEnd="6dp"
                 android:clickable="true" android:focusable="true">
@@ -118,9 +87,8 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="AI coding" android:textColor="#66FFFFFF" android:textSize="10sp"/>
             </LinearLayout>
-
-            <LinearLayout android:id="@+id/quick_alarm"
-                android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/quick_alarm" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/labs_card_bg"
                 android:clickable="true" android:focusable="true">
@@ -131,20 +99,19 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Tools Grid -->
+        <!-- Tools -->
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="  TOOLS" android:textColor="#00D4AA" android:textSize="11sp"
             android:textStyle="bold" android:letterSpacing="0.15"
             android:paddingTop="10dp" android:paddingBottom="6dp" android:paddingStart="20dp"
             android:background="#000000"/>
 
+        <!-- Row 1: Agent + RAM Boost -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
             android:layout_marginBottom="8dp">
-
-            <!-- Arizen Agent -->
-            <LinearLayout android:id="@+id/card_agent"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_agent" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg" android:layout_marginEnd="8dp"
                 android:clickable="true" android:focusable="true">
@@ -155,29 +122,26 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="AI Agent" android:textColor="#4A9EFF" android:textSize="10sp"/>
             </LinearLayout>
-
-            <!-- RAM Booster -->
-            <LinearLayout android:id="@+id/card_ram_boost"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_routines" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg"
                 android:clickable="true" android:focusable="true">
                 <View android:layout_width="8dp" android:layout_height="8dp"
                     android:background="#FF9F0A" android:layout_marginBottom="6dp"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="RAM" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+                    android:text="Routines" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Booster" android:textColor="#FF9F0A" android:textSize="10sp"/>
+                    android:text="Otomatisasi" android:textColor="#FF9F0A" android:textSize="10sp"/>
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Row 2: System + Battery -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
             android:layout_marginBottom="8dp">
-
-            <!-- System Info -->
-            <LinearLayout android:id="@+id/card_sysinfo"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_sysinfo" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg" android:layout_marginEnd="8dp"
                 android:clickable="true" android:focusable="true">
@@ -188,10 +152,8 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Info" android:textColor="#00D4AA" android:textSize="10sp"/>
             </LinearLayout>
-
-            <!-- Battery -->
-            <LinearLayout android:id="@+id/card_battery"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_battery" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg"
                 android:clickable="true" android:focusable="true">
@@ -204,13 +166,24 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Row 3: RAM Boost + Notes + Calc -->
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:paddingStart="16dp" android:paddingEnd="16dp"
             android:layout_marginBottom="12dp">
-
-            <!-- Notes -->
-            <LinearLayout android:id="@+id/card_notes"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_ram_boost" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
+                android:orientation="vertical" android:gravity="center"
+                android:background="@drawable/card_bg" android:layout_marginEnd="8dp"
+                android:clickable="true" android:focusable="true">
+                <View android:layout_width="8dp" android:layout_height="8dp"
+                    android:background="#FF453A" android:layout_marginBottom="6dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="RAM" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Booster" android:textColor="#FF453A" android:textSize="10sp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/card_notes" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg" android:layout_marginEnd="8dp"
                 android:clickable="true" android:focusable="true">
@@ -221,48 +194,32 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="Quick Notes" android:textColor="#BF5AF2" android:textSize="10sp"/>
             </LinearLayout>
-
-            <!-- Calculator -->
-            <LinearLayout android:id="@+id/card_calc"
-                android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1"
+            <LinearLayout android:id="@+id/card_calc" android:layout_width="0dp"
+                android:layout_height="80dp" android:layout_weight="1"
                 android:orientation="vertical" android:gravity="center"
                 android:background="@drawable/card_bg"
                 android:clickable="true" android:focusable="true">
                 <View android:layout_width="8dp" android:layout_height="8dp"
-                    android:background="#FF453A" android:layout_marginBottom="6dp"/>
+                    android:background="#FFFFFF" android:layout_marginBottom="6dp"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Kalkulator" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+                    android:text="Kalkul" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="sqrt, sin, dll" android:textColor="#FF453A" android:textSize="10sp"/>
+                    android:text="sqrt, sin…" android:textColor="#AAAAAA" android:textSize="10sp"/>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Result output -->
-        <TextView
-            android:id="@+id/tv_last_result"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:background="#080808"
-            android:textColor="#CCFFFFFF"
-            android:textSize="12sp"
-            android:fontFamily="monospace"
-            android:lineSpacingMultiplier="1.6"
-            android:padding="16dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
+        <!-- Result output panel -->
+        <TextView android:id="@+id/tv_last_result" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:visibility="gone"
+            android:background="#080808" android:textColor="#CCFFFFFF"
+            android:textSize="12sp" android:fontFamily="monospace"
+            android:lineSpacingMultiplier="1.6" android:padding="16dp"
+            android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
             android:layout_marginBottom="12dp"/>
 
-        <!-- Build info -->
-        <TextView
-            android:id="@+id/tv_build_info"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textColor="#22FFFFFF"
-            android:textSize="10sp"
-            android:padding="12dp"/>
-
+        <TextView android:id="@+id/tv_build_info" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:gravity="center"
+            android:textColor="#22FFFFFF" android:textSize="10sp" android:padding="12dp"/>
         <View android:layout_width="match_parent" android:layout_height="20dp"/>
     </LinearLayout>
 </ScrollView>
