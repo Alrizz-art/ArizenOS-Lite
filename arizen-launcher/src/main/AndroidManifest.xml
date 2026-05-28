@@ -1,27 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.arizen.launcher"
-    android:versionCode="4"
+    android:versionCode="5"
     android:versionName="1.0">
 
-    <uses-sdk
-        android:minSdkVersion="28"
-        android:targetSdkVersion="28"/>
+    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>
 
-    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-    <!-- Voice / Mic -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <!-- Device -->
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.SET_ALARM"/>
 
     <application
         android:label="@string/app_name"
@@ -30,14 +26,10 @@
         android:allowBackup="false"
         android:largeHeap="false">
 
-        <!-- Main Launcher -->
-        <activity
-            android:name=".MainActivity"
-            android:launchMode="singleTask"
-            android:stateNotNeeded="true"
+        <activity android:name=".MainActivity"
+            android:launchMode="singleTask" android:stateNotNeeded="true"
             android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize"
-            android:exported="true">
+            android:windowSoftInputMode="adjustResize" android:exported="true">
             <intent-filter android:priority="1">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.HOME"/>
@@ -45,41 +37,35 @@
             </intent-filter>
         </activity>
 
-        <!-- Arizen AI Assistant (voice-capable) -->
-        <activity
-            android:name=".ArizenAssistantActivity"
+        <activity android:name=".ArizenAssistantActivity"
             android:theme="@style/ArizenAssistantTheme"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize|stateVisible"
             android:exported="false"/>
 
-        <!-- ArizenLabs -->
-        <activity
-            android:name=".ArizenLabsActivity"
-            android:theme="@style/ArizenLabsTheme"
+        <activity android:name=".ArizenLabsActivity"
+            android:theme="@style/ArizenLabsTheme" android:exported="false"/>
+
+        <activity android:name=".ArizenSettingsActivity"
+            android:label="@string/settings_title" android:exported="false"/>
+
+        <!-- Routines activities -->
+        <activity android:name=".ArizenRoutinesActivity"
+            android:label="Arizen Routines"
+            android:theme="@style/ArizenTheme" android:exported="false"/>
+
+        <activity android:name=".ArizenRoutineEditorActivity"
+            android:label="Edit Rutinitas"
+            android:theme="@style/ArizenTheme"
+            android:windowSoftInputMode="adjustResize"
             android:exported="false"/>
 
-        <!-- Arizen Settings -->
-        <activity
-            android:name=".ArizenSettingsActivity"
-            android:label="@string/settings_title"
-            android:exported="false"/>
+        <service android:name=".ArizenWakeService"
+            android:foregroundServiceType="microphone" android:exported="false"/>
 
-        <!-- Wake Word Service (foreground) -->
-        <service
-            android:name=".ArizenWakeService"
-            android:foregroundServiceType="microphone"
-            android:exported="false"/>
+        <service android:name=".ArizenAmbientService" android:exported="false"/>
 
-        <!-- Ambient Service -->
-        <service
-            android:name=".ArizenAmbientService"
-            android:exported="false"/>
-
-        <!-- Boot receiver — auto-start wake service after boot -->
-        <receiver
-            android:name=".ArizenBootReceiver"
-            android:exported="false">
+        <receiver android:name=".ArizenBootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
