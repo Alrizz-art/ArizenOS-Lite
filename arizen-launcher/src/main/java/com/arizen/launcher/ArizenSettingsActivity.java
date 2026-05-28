@@ -8,20 +8,16 @@ import android.view.View;
 import android.widget.*;
 import com.arizen.launcher.tools.RamBoosterTool;
 import com.arizen.launcher.tools.SystemInfoTool;
-import com.arizen.launcher.tools.BatteryTool;
 
 public class ArizenSettingsActivity extends Activity {
 
     private ArizenSettings settings;
 
-    // AI config
     private EditText etApiKey, etCustomUrl;
     private Spinner  spProvider, spModel;
-    private TextView tvStatus, tvAboutBuild;
-
-    // Performance toggles
-    private Switch swZram, swAnimSpeed, swBgLimit;
-    private TextView tvRamInfo;
+    private TextView tvStatus, tvAboutBuild, tvRamInfo;
+    private Switch   swZram, swAnimSpeed, swBgLimit, swWakeWord, swAutoSpeak;
+    private Button   btnSave, btnTest, btnClearHistory, btnRamBoost;
 
     private static final String[] PROVIDERS = {
         "groq", "together_ai", "openai", "cloudflare", "ollama"
@@ -39,7 +35,6 @@ public class ArizenSettingsActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
         settings = new ArizenSettings(this);
-
         bindViews();
         loadValues();
         setupListeners();
@@ -47,81 +42,74 @@ public class ArizenSettingsActivity extends Activity {
     }
 
     private void bindViews() {
-        etApiKey    = findViewById(R.id.et_api_key);
-        etCustomUrl = findViewById(R.id.et_custom_url);
-        spProvider  = findViewById(R.id.sp_provider);
-        spModel     = findViewById(R.id.sp_model);
-        tvStatus    = findViewById(R.id.tv_status);
-        tvAboutBuild= findViewById(R.id.tv_about_build);
-        tvRamInfo   = findViewById(R.id.tv_ram_info);
-        swZram      = findViewById(R.id.sw_zram);
-        swAnimSpeed = findViewById(R.id.sw_anim_speed);
-        swBgLimit   = findViewById(R.id.sw_bg_limit);
+        etApiKey      = findViewById(R.id.et_api_key);
+        etCustomUrl   = findViewById(R.id.et_custom_url);
+        spProvider    = findViewById(R.id.sp_provider);
+        spModel       = findViewById(R.id.sp_model);
+        tvStatus      = findViewById(R.id.tv_status);
+        tvAboutBuild  = findViewById(R.id.tv_about_build);
+        tvRamInfo     = findViewById(R.id.tv_ram_info);
+        swZram        = findViewById(R.id.sw_zram);
+        swAnimSpeed   = findViewById(R.id.sw_anim_speed);
+        swBgLimit     = findViewById(R.id.sw_bg_limit);
+        swWakeWord    = findViewById(R.id.sw_wake_word);
+        swAutoSpeak   = findViewById(R.id.sw_auto_speak_settings);
+        btnSave       = findViewById(R.id.btn_save);
+        btnTest       = findViewById(R.id.btn_test);
+        btnClearHistory = findViewById(R.id.btn_clear_history);
+        btnRamBoost   = findViewById(R.id.btn_ram_boost);
 
-        // Provider spinner
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
             android.R.layout.simple_spinner_dropdown_item, PROVIDER_LABELS);
         spProvider.setAdapter(adapter);
     }
 
     private void loadValues() {
-        // Load API key (masked)
         String key = settings.getApiKey();
-        if (!key.isEmpty()) {
-            etApiKey.setHint("Key tersimpan: " + key.substring(0, Math.min(8, key.length())) + "****");
-        }
+        if (!key.isEmpty())
+            etApiKey.setHint("Tersimpan: " + key.substring(0, Math.min(8, key.length())) + "****");
 
-        // Load provider selection
-        String currentProvider = settings.getProvider();
-        for (int i = 0; i < PROVIDERS.length; i++) {
-            if (PROVIDERS[i].equals(currentProvider)) { spProvider.setSelection(i); break; }
-        }
+        String cur = settings.getProvider();
+        for (int i = 0; i < PROVIDERS.length; i++)
+            if (PROVIDERS[i].equals(cur)) { spProvider.setSelection(i); break; }
 
-        // Load model list for current provider
-        updateModelList(currentProvider);
+        updateModelList(cur);
 
-        // Performance switches
         swZram.setChecked(settings.isZramEnabled());
         swAnimSpeed.setChecked(settings.isAnimSpeedReduced());
         swBgLimit.setChecked(settings.isBgLimitEnabled());
+        swWakeWord.setChecked(settings.isWakeWordEnabled());
+        swAutoSpeak.setChecked(settings.isAutoSpeakEnabled());
+
+        tvRamInfo.setText(new SystemInfoTool(this).getInfo());
     }
 
     private void setupListeners() {
-        // Provider change
         spProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+            @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                 settings.setProvider(PROVIDERS[pos]);
                 updateModelList(PROVIDERS[pos]);
-                // Auto-fill base URL
                 etCustomUrl.setHint(settings.getBaseUrl());
             }
             @Override public void onNothingSelected(AdapterView<?> p) {}
         });
 
-        // Save AI config
-        Button btnSave = findViewById(R.id.btn_save);
         btnSave.setOnClickListener(v -> {
             String key = etApiKey.getText().toString().trim();
             if (!key.isEmpty()) settings.saveApiKey(key);
-
-            String selectedModel = (String) spModel.getSelectedItem();
-            if (selectedModel != null) settings.setModel(selectedModel);
-
-            String customUrl = etCustomUrl.getText().toString().trim();
-            if (!customUrl.isEmpty()) settings.setBaseUrl(customUrl);
-
+            String sel = (String) spModel.getSelectedItem();
+            if (sel != null) settings.setModel(sel);
+            String url = etCustomUrl.getText().toString().trim();
+            if (!url.isEmpty()) settings.setBaseUrl(url);
             tvStatus.setText(getString(R.string.status_saved));
             tvStatus.setTextColor(0xFF44FF88);
         });
 
-        // Test AI connection
-        Button btnTest = findViewById(R.id.btn_test);
         btnTest.setOnClickListener(v -> {
-            tvStatus.setText("Menguji koneksi...");
+            tvStatus.setText("Menguji koneksi…");
             tvStatus.setTextColor(0xFFFF9F0A);
             ArizenAIBridge bridge = new ArizenAIBridge(this);
-            bridge.ask("Reply with: ARIZEN_OK", new ArizenAIBridge.AIResponseCallback() {
+            bridge.ask("Reply with exactly: ARIZEN_OK", new ArizenAIBridge.AIResponseCallback() {
                 @Override public void onResponse(String r) {
                     runOnUiThread(() -> {
                         tvStatus.setText(getString(R.string.status_ok));
@@ -139,45 +127,47 @@ public class ArizenSettingsActivity extends Activity {
             });
         });
 
-        // Clear AI history
-        Button btnClear = findViewById(R.id.btn_clear_history);
-        btnClear.setOnClickListener(v -> {
+        btnClearHistory.setOnClickListener(v -> {
             ArizenAPIClient.clearHistory();
             tvStatus.setText("Chat history dibersihkan");
-            tvStatus.setTextColor(0xFF99FFFFFF);
+            tvStatus.setTextColor(0xFF88FFFFFF);
         });
 
-        // Performance switches
-        swZram.setOnCheckedChangeListener((b, checked) -> settings.setZramEnabled(checked));
-        swAnimSpeed.setOnCheckedChangeListener((b, checked) -> settings.setAnimSpeedReduced(checked));
-        swBgLimit.setOnCheckedChangeListener((b, checked) -> settings.setBgLimitEnabled(checked));
-
-        // RAM Boost button
-        Button btnBoost = findViewById(R.id.btn_ram_boost);
-        btnBoost.setOnClickListener(v -> {
+        btnRamBoost.setOnClickListener(v -> {
             RamBoosterTool rbt = new RamBoosterTool(this);
             rbt.execute("boost");
             tvRamInfo.setText(rbt.getLastResult(this));
         });
 
-        // Refresh RAM info
-        updateRamInfo();
-    }
+        // Performance toggles
+        swZram.setOnCheckedChangeListener((b, c) -> settings.setZramEnabled(c));
+        swAnimSpeed.setOnCheckedChangeListener((b, c) -> settings.setAnimSpeedReduced(c));
+        swBgLimit.setOnCheckedChangeListener((b, c) -> settings.setBgLimitEnabled(c));
+        swAutoSpeak.setOnCheckedChangeListener((b, c) -> settings.setAutoSpeakEnabled(c));
 
-    private void updateRamInfo() {
-        SystemInfoTool si = new SystemInfoTool(this);
-        tvRamInfo.setText(si.getInfo());
+        // Wake word toggle — starts/stops foreground service
+        swWakeWord.setOnCheckedChangeListener((b, checked) -> {
+            settings.setWakeWordEnabled(checked);
+            Intent svc = new Intent(this, ArizenWakeService.class);
+            if (checked) {
+                startForegroundService(svc);
+                tvStatus.setText("Hey Arizen aktif — mendengarkan di background");
+                tvStatus.setTextColor(0xFF44FF88);
+            } else {
+                stopService(svc);
+                tvStatus.setText("Hey Arizen dinonaktifkan");
+                tvStatus.setTextColor(0xFF88FFFFFF);
+            }
+        });
     }
 
     private void updateAboutInfo() {
-        String buildDate = android.os.SystemProperties.get("ro.arizen.build.date", "20260528");
-        String version   = android.os.SystemProperties.get("ro.arizen.version", "1.0");
-        String codename  = android.os.SystemProperties.get("ro.arizen.codename", "Zenith");
-
         tvAboutBuild.setText(
-            "ArizenOS Lite " + version + "  |  " + codename + "\n" +
-            "Build: " + buildDate + "  |  Device: SM-T295\n" +
-            "Android " + Build.VERSION.RELEASE + "  |  Kernel: " + System.getProperty("os.version","?") + "\n" +
+            "ArizenOS Lite 1.0  |  Zenith\n" +
+            "Build: " + android.os.SystemProperties.get("ro.arizen.build.date","20260528") +
+            "  |  SM-T295\n" +
+            "Android " + Build.VERSION.RELEASE +
+            "  |  " + Build.SUPPORTED_ABIS[0] + "\n" +
             "by ArizenLabs"
         );
     }
@@ -186,7 +176,7 @@ public class ArizenSettingsActivity extends Activity {
         String[] models;
         switch (provider) {
             case "groq":        models = new String[]{"llama-3.1-8b-instant","llama-3.3-70b-versatile","mixtral-8x7b-32768","gemma2-9b-it"}; break;
-            case "together_ai": models = new String[]{"meta-llama/Llama-3-8b-chat-hf","mistralai/Mistral-7B-Instruct-v0.1","togethercomputer/alpaca-7b"}; break;
+            case "together_ai": models = new String[]{"meta-llama/Llama-3-8b-chat-hf","mistralai/Mistral-7B-Instruct-v0.1"}; break;
             case "openai":      models = new String[]{"gpt-4o-mini","gpt-3.5-turbo","gpt-4o"}; break;
             case "cloudflare":  models = new String[]{"@cf/meta/llama-3-8b-instruct","@cf/mistral/mistral-7b-instruct-v0.1"}; break;
             default:            models = new String[]{"llama3","mistral","phi3","qwen2"};
@@ -195,9 +185,8 @@ public class ArizenSettingsActivity extends Activity {
             android.R.layout.simple_spinner_dropdown_item, models);
         spModel.setAdapter(a);
         String saved = settings.getModel();
-        for (int i = 0; i < models.length; i++) {
+        for (int i = 0; i < models.length; i++)
             if (models[i].equals(saved)) { spModel.setSelection(i); break; }
-        }
     }
 
     @Override public void onBackPressed() { finish(); }
