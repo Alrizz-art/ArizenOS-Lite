@@ -164,7 +164,7 @@ public class ArizenSettingsActivity extends Activity {
     private void updateAboutInfo() {
         tvAboutBuild.setText(
             "ArizenOS Lite 1.0  |  Zenith\n" +
-            "Build: " + android.os.SystemProperties.get("ro.arizen.build.date","20260528") +
+            "Build: " + "20260528" +
             "  |  SM-T295\n" +
             "Android " + Build.VERSION.RELEASE +
             "  |  " + Build.SUPPORTED_ABIS[0] + "\n" +
