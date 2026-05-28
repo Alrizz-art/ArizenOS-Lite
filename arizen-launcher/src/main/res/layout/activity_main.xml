@@ -1,113 +1,177 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    ArizenOS Lite — Main Launcher Layout
-    AMOLED dark, minimal, AI-centered dashboard
--->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="@color/bg_primary">
 
-    <!-- Time & Date -->
-    <LinearLayout
-        android:id="@+id/header"
+    <View android:id="@+id/status_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
+        android:layout_alignParentTop="true"/>
+
+    <LinearLayout android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/status_bar_spacer"
         android:orientation="vertical"
-        android:paddingTop="48dp"
         android:paddingStart="32dp"
-        android:paddingEnd="32dp">
-
-        <TextView
-            android:id="@+id/tv_time"
+        android:paddingEnd="32dp"
+        android:paddingTop="8dp">
+        <TextView android:id="@+id/tv_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="64sp"
-            android:textColor="#FFFFFF"
-            android:textStyle="thin"
+            android:textSize="72sp"
+            android:textColor="@color/text_primary"
             android:fontFamily="sans-serif-thin"
+            android:letterSpacing="-0.02"
             android:text="00:00"/>
-
-        <TextView
-            android:id="@+id/tv_date"
-            android:layout_width="wrap_content"
+        <LinearLayout android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textColor="#88FFFFFF"
-            android:fontFamily="sans-serif-light"
-            android:layout_marginTop="4dp"
-            android:text="Monday, 26 May"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="2dp">
+            <TextView android:id="@+id/tv_date"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="15sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="sans-serif-light"
+                android:text="Senin, 26 Mei"/>
+            <TextView android:id="@+id/tv_battery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_tertiary"
+                android:fontFamily="sans-serif-light"
+                android:text="100%"/>
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- AI Assistant Card -->
-    <LinearLayout
-        android:id="@+id/ai_card"
+    <LinearLayout android:id="@+id/ai_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/header"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
         android:background="@drawable/card_bg"
         android:orientation="horizontal"
         android:padding="20dp"
-        android:gravity="center_vertical">
-
-        <View
-            android:id="@+id/ai_bubble"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/ai_bubble_bg"/>
-
-        <LinearLayout
-            android:layout_width="0dp"
+        android:gravity="center_vertical"
+        android:clickable="true"
+        android:focusable="true">
+        <FrameLayout android:id="@+id/ai_orb_container"
+            android:layout_width="52dp"
+            android:layout_height="52dp">
+            <View android:id="@+id/ai_glow_ring"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/ai_orb_bg"
+                android:layout_gravity="center"/>
+            <View android:id="@+id/ai_orb"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/ai_bubble_bg"
+                android:layout_gravity="center"/>
+        </FrameLayout>
+        <LinearLayout android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
             android:layout_marginStart="16dp">
-
-            <TextView
+            <LinearLayout android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Arizen"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"/>
+                <TextView android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="AI"
+                    android:textColor="@color/accent_blue"
+                    android:textSize="9sp"
+                    android:background="@drawable/badge_bg"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"/>
+            </LinearLayout>
+            <TextView android:id="@+id/tv_greeting"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Arizen"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:layout_width="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Halo! Ada yang bisa saya bantu?"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-light"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/btn_labs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="10dp"
+            android:background="@drawable/labs_card_bg"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="How can I help you today?"
-                android:textColor="#88FFFFFF"
-                android:textSize="12sp"/>
+                android:text="*"
+                android:textColor="@color/accent_labs"
+                android:textSize="18sp"
+                android:gravity="center"/>
+            <TextView android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Labs"
+                android:textColor="@color/accent_labs"
+                android:textSize="9sp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:layout_marginTop="2dp"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- App Grid -->
-    <LinearLayout
-        android:id="@+id/app_grid"
+    <ScrollView android:id="@+id/app_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_below="@id/ai_card"
+        android:layout_above="@id/dock_container"
+        android:layout_marginTop="16dp"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+        <LinearLayout android:id="@+id/app_grid"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:flexWrap="wrap"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"/>
+    </ScrollView>
+
+    <LinearLayout android:id="@+id/dock_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/ai_card"
-        android:layout_marginTop="24dp"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:flexWrap="wrap"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"/>
-
-    <!-- Bottom Dock -->
-    <LinearLayout
-        android:id="@+id/dock"
-        android:layout_width="match_parent"
-        android:layout_height="72dp"
         android:layout_alignParentBottom="true"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="24dp"
-        android:background="@drawable/dock_bg"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="12dp"/>
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:gravity="center">
+        <LinearLayout android:id="@+id/dock"
+            android:layout_width="wrap_content"
+            android:layout_height="68dp"
+            android:background="@drawable/dock_bg"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"/>
+    </LinearLayout>
 
 </RelativeLayout>
