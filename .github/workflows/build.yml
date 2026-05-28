@@ -1,0 +1,171 @@
+name: 🚀 Build ArizenOS Lite
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_region:
+        description: 'Region kode firmware Samsung SM-T295'
+        required: true
+        default: 'XSP'
+        type: choice
+        options:
+          - XSP
+          - INS
+          - EUX
+          - DBT
+          - BTU
+          - SER
+          - THL
+          - OXM
+      arizen_version:
+        description: 'Versi ArizenOS (contoh: 1.0)'
+        required: true
+        default: '1.0'
+
+jobs:
+  build:
+    name: Build ArizenOS Lite — SM-T295 (${{ inputs.device_region }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python (untuk samloader)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            e2fsprogs \
+            tar \
+            openssl \
+            unzip \
+            file \
+            android-tools-fsutils \
+            pv \
+            || true
+          pip install samloader --quiet
+          echo "✅ Build tools installed"
+
+      - name: 📡 Download Samsung firmware (SM-T295 / ${{ inputs.device_region }})
+        run: |
+          mkdir -p firmware
+          echo "📡 Downloading firmware SM-T295 region ${{ inputs.device_region }}..."
+          
+          samloader \
+            --model SM-T295 \
+            --region ${{ inputs.device_region }} \
+            download \
+            --output firmware \
+            --auto-download \
+          || samloader \
+            -m SM-T295 \
+            -r ${{ inputs.device_region }} \
+            download \
+            -O firmware
+
+          ls -lh firmware/
+          echo "✅ Firmware downloaded"
+
+      - name: 📂 Extract firmware
+        run: |
+          chmod +x scripts/*.sh
+          FIRMWARE_ZIP=$(find firmware/ -name "*.zip" | head -1)
+          echo "Using: $FIRMWARE_ZIP"
+          ./scripts/extract_firmware.sh "$FIRMWARE_ZIP"
+          echo "✅ Firmware extracted"
+
+      - name: 🔓 Unpack AP partition
+        run: |
+          sudo ./scripts/unpack_ap.sh
+          echo "✅ AP unpacked"
+
+      - name: 💉 Inject ArizenOS components
+        run: |
+          sudo ./scripts/inject_arizenos.sh
+          echo "✅ ArizenOS components injected"
+
+      - name: 📦 Repack AP partition
+        run: |
+          sudo ./scripts/repack_ap.sh
+          echo "✅ AP repacked"
+
+      - name: 🎁 Package for Odin
+        run: |
+          export ARIZEN_VERSION="${{ inputs.arizen_version }}"
+          ./scripts/package_odin.sh
+          ls -lh output/
+          echo "✅ Odin package ready"
+
+      - name: 🔍 Verify output
+        run: |
+          OUTPUT=$(find output/ -name "*.tar.md5" | head -1)
+          if [ -z "$OUTPUT" ]; then
+            echo "❌ Build failed — output file not found"
+            exit 1
+          fi
+          echo "✅ Output: $(basename $OUTPUT)"
+          echo "📏 Size: $(du -sh $OUTPUT | cut -f1)"
+          echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
+          echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
+
+      - name: 📤 Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArizenOS-Lite-v${{ inputs.arizen_version }}-SM-T295-${{ inputs.device_region }}
+          path: output/*.tar.md5
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: 🏷️ Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.arizen_version }}-${{ inputs.device_region }}-${{ github.run_number }}
+          name: "ArizenOS Lite v${{ inputs.arizen_version }} — SM-T295 (${{ inputs.device_region }})"
+          body: |
+            ## ArizenOS Lite v${{ inputs.arizen_version }}
+            
+            **Device:** Samsung Galaxy Tab A 8.0 (2019) SM-T295  
+            **Region:** ${{ inputs.device_region }}  
+            **Built:** ${{ github.event.repository.updated_at }}
+            
+            ### ⚡ Flash Instructions
+            1. Download `ArizenOSLite_v${{ inputs.arizen_version }}_SM-T295_AP.tar.md5` di bawah
+            2. Boot tablet ke Download Mode: **Power + Vol Down + Bixby → Vol Up**
+            3. Buka Odin → pilih AP → select file `.tar.md5`
+            4. Klik **Start**
+            5. Tunggu sampai PASS! ✅
+            
+            ### 📋 What's included
+            - Arizen Launcher (dashboard AI-centered)
+            - Arizen Core AI (cloud AI assistant)
+            - Samsung debloat (~25 apps removed)
+            - ZRAM optimization untuk 2GB RAM
+            - AMOLED dark theme
+            - Performance tweaks
+            
+            ### ⚠️ Disclaimer
+            Backup data dulu sebelum flash. Flash at your own risk.
+          files: output/*.tar.md5
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ✅ Build Summary
+        run: |
+          echo "### 🎉 ArizenOS Lite Build Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Device | SM-T295 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Region | ${{ inputs.device_region }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | v${{ inputs.arizen_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| File | ${{ env.OUTPUT_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Download di tab Releases atau Artifacts di atas!** 👆" >> $GITHUB_STEP_SUMMARY
