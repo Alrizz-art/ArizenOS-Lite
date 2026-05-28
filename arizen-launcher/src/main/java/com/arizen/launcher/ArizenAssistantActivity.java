@@ -2,122 +2,73 @@ package com.arizen.launcher;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.widget.EditText;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.os.AsyncTask;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import java.io.*;
-import java.net.*;
 
 /**
  * ArizenOS Lite — AI Assistant Activity
- * Ambient AI interface powered by cloud LLM
+ * FIXED: Replaced deprecated AsyncTask with ExecutorService + Handler
  */
 public class ArizenAssistantActivity extends Activity {
 
     private EditText inputField;
     private TextView responseView;
-    private ArizenToolManager toolManager;
-    private ArizenSettings settings;
+    private ScrollView scrollView;
+    private Button sendBtn;
+    private ArizenAIBridge aiBridge;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_assistant);
 
-        settings = new ArizenSettings(this);
-        toolManager = new ArizenToolManager(this);
+        aiBridge = new ArizenAIBridge(this);
 
-        inputField = findViewById(R.id.input_field);
+        inputField  = findViewById(R.id.input_field);
         responseView = findViewById(R.id.response_view);
-        Button sendBtn = findViewById(R.id.btn_send);
+        scrollView  = findViewById(R.id.scroll_view);
+        sendBtn     = findViewById(R.id.btn_send);
+
+        if (!aiBridge.isConfigured()) {
+            responseView.setText("API key belum diset.\n\nBuka Arizen Settings → AI → API Key.");
+        }
 
         sendBtn.setOnClickListener(v -> {
-            String userInput = inputField.getText().toString().trim();
-            if (!userInput.isEmpty()) {
-                sendToAI(userInput);
-                inputField.setText("");
-            }
+            String input = inputField.getText().toString().trim();
+            if (input.isEmpty()) return;
+            inputField.setText("");
+            sendBtn.setEnabled(false);
+            responseView.setText("Arizen sedang berpikir…");
+
+            aiBridge.ask(input, new ArizenAIBridge.AIResponseCallback() {
+                @Override
+                public void onResponse(String response) {
+                    mainHandler.post(() -> {
+                        responseView.setText(response);
+                        scrollView.post(() -> scrollView.fullScroll(View.FOCUS_DOWN));
+                        sendBtn.setEnabled(true);
+                    });
+                }
+                @Override
+                public void onError(String error) {
+                    mainHandler.post(() -> {
+                        responseView.setText("Error: " + error + "\n\nCek koneksi & API key kamu.");
+                        sendBtn.setEnabled(true);
+                    });
+                }
+            });
         });
     }
 
-    private void sendToAI(String userMessage) {
-        responseView.setText("Arizen is thinking...");
-
-        new AsyncTask<String, Void, String>() {
-            @Override
-            protected String doInBackground(String... params) {
-                try {
-                    return callAIAPI(params[0]);
-                } catch (Exception e) {
-                    return "Error: " + e.getMessage();
-                }
-            }
-
-            @Override
-            protected void onPostExecute(String response) {
-                responseView.setText(response);
-                toolManager.processResponse(response);
-            }
-        }.execute(userMessage);
-    }
-
-    private String callAIAPI(String userMessage) throws Exception {
-        String apiKey = settings.getApiKey();
-        String baseUrl = settings.getBaseUrl();
-        String model = settings.getModel();
-
-        if (apiKey == null || apiKey.isEmpty()) {
-            return "Please set your API key in Arizen Settings → AI.";
-        }
-
-        JSONObject payload = new JSONObject();
-        payload.put("model", model);
-        payload.put("stream", false);
-
-        JSONArray messages = new JSONArray();
-
-        JSONObject systemMsg = new JSONObject();
-        systemMsg.put("role", "system");
-        systemMsg.put("content", "You are Arizen, an intelligent AI assistant in ArizenOS Lite. " +
-            "You can control the device using tools. Be concise and helpful. " +
-            "Available tools: " + toolManager.getToolDescriptions());
-        messages.put(systemMsg);
-
-        JSONObject userMsg = new JSONObject();
-        userMsg.put("role", "user");
-        userMsg.put("content", userMessage);
-        messages.put(userMsg);
-
-        payload.put("messages", messages);
-        payload.put("max_tokens", 512);
-
-        URL url = new URL(baseUrl + "/chat/completions");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Authorization", "Bearer " + apiKey);
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setDoOutput(true);
-
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(payload.toString().getBytes("UTF-8"));
-        }
-
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
-            }
-        }
-
-        JSONObject response = new JSONObject(sb.toString());
-        return response.getJSONArray("choices")
-            .getJSONObject(0)
-            .getJSONObject("message")
-            .getString("content");
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        aiBridge.shutdown();
     }
 }
