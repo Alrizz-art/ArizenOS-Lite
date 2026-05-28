@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#000000" android:orientation="vertical">
+
+    <!-- Header -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="56dp"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:background="#0A0A0A">
+        <TextView android:id="@+id/btn_back" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="←"
+            android:textColor="#4A9EFF" android:textSize="20sp" android:padding="8dp"
+            android:clickable="true" android:focusable="true"/>
+        <TextView android:id="@+id/tv_editor_title" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Rutinitas Baru" android:textColor="#FFFFFF"
+            android:textSize="17sp" android:textStyle="bold" android:gravity="center"/>
+        <Button android:id="@+id/btn_save_routine" android:layout_width="wrap_content"
+            android:layout_height="36dp" android:text="Simpan"
+            android:textColor="#FFFFFF" android:textSize="13sp"
+            android:background="@drawable/btn_primary_bg" android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
+    </LinearLayout>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:scrollbars="none">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="16dp">
+
+            <!-- Name + Trigger -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="#0D0D0D"
+                android:padding="16dp" android:layout_marginBottom="8dp">
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="NAMA RUTINITAS" android:textColor="#666666"
+                    android:textSize="10sp" android:letterSpacing="0.12"
+                    android:layout_marginBottom="6dp"/>
+                <EditText android:id="@+id/et_routine_name" android:layout_width="match_parent"
+                    android:layout_height="44dp" android:background="@drawable/input_bg"
+                    android:textColor="#FFFFFF" android:textColorHint="#44FFFFFF"
+                    android:hint="Contoh: Mode Pagi, Fokus Kerja…"
+                    android:textSize="14sp" android:paddingStart="12dp" android:paddingEnd="12dp"
+                    android:layout_marginBottom="14dp"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="TRIGGER SUARA  (opsional)" android:textColor="#666666"
+                    android:textSize="10sp" android:letterSpacing="0.12"
+                    android:layout_marginBottom="6dp"/>
+                <EditText android:id="@+id/et_wake_trigger" android:layout_width="match_parent"
+                    android:layout_height="44dp" android:background="@drawable/input_bg"
+                    android:textColor="#FFFFFF" android:textColorHint="#44FFFFFF"
+                    android:hint="Contoh: mode pagi, fokus sekarang…"
+                    android:textSize="13sp" android:paddingStart="12dp" android:paddingEnd="12dp"
+                    android:layout_marginBottom="14dp"/>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="Ucapkan frasa ini setelah 'Hey Arizen' untuk langsung menjalankan rutinitas."
+                    android:textColor="#33FFFFFF" android:textSize="11sp"
+                    android:lineSpacingMultiplier="1.4"/>
+            </LinearLayout>
+
+            <!-- Icon + Color -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginBottom="8dp">
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical"
+                    android:background="#0D0D0D" android:padding="16dp"
+                    android:layout_marginEnd="4dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="IKON" android:textColor="#666666" android:textSize="10sp"
+                        android:letterSpacing="0.12" android:layout_marginBottom="6dp"/>
+                    <Spinner android:id="@+id/sp_icon" android:layout_width="match_parent"
+                        android:layout_height="40dp" android:background="#1A1A1A"
+                        android:popupBackground="#1A1A1A"/>
+                </LinearLayout>
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:orientation="vertical"
+                    android:background="#0D0D0D" android:padding="16dp"
+                    android:layout_marginStart="4dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="WARNA" android:textColor="#666666" android:textSize="10sp"
+                        android:letterSpacing="0.12" android:layout_marginBottom="6dp"/>
+                    <Spinner android:id="@+id/sp_color" android:layout_width="match_parent"
+                        android:layout_height="40dp" android:background="#1A1A1A"
+                        android:popupBackground="#1A1A1A"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Steps section -->
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="#0D0D0D"
+                android:padding="16dp" android:layout_marginBottom="8dp">
+
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="LANGKAH-LANGKAH"
+                        android:textColor="#666666" android:textSize="10sp" android:letterSpacing="0.12"/>
+                    <Button android:id="@+id/btn_add_step" android:layout_width="wrap_content"
+                        android:layout_height="32dp" android:text="+ Tambah"
+                        android:textColor="#4A9EFF" android:textSize="12sp"
+                        android:background="#00000000"/>
+                </LinearLayout>
+
+                <LinearLayout android:id="@+id/steps_container" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:orientation="vertical"/>
+            </LinearLayout>
+
+            <!-- Delete button (only for existing) -->
+            <Button android:id="@+id/btn_delete_routine" android:layout_width="match_parent"
+                android:layout_height="44dp" android:text="Hapus Rutinitas"
+                android:textColor="#FF453A" android:textSize="13sp"
+                android:background="#0D0D0D" android:layout_marginBottom="8dp"
+                android:visibility="gone"/>
+
+            <!-- Tip -->
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="💡 Tip: Kamu juga bisa minta Arizen AI membuat rutinitas.\nContoh: 'Buat rutinitas pagi: aktifkan WiFi, boost RAM, buka Gmail'"
+                android:textColor="#33FFFFFF" android:textSize="11sp"
+                android:lineSpacingMultiplier="1.6" android:padding="16dp"
+                android:background="#080808"/>
+
+            <View android:layout_width="match_parent" android:layout_height="24dp"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
