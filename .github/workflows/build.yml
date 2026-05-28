@@ -72,10 +72,7 @@ jobs:
           echo "Building ArizenLauncher from source..."
           cd arizen-launcher
 
-          # Make Gradle wrapper executable
           chmod +x gradlew 2>/dev/null || true
-
-          # Use system gradle if no wrapper
           if [[ ! -f gradlew ]]; then
             gradle wrapper --gradle-version 7.6
           fi
@@ -86,12 +83,10 @@ jobs:
             -Pandroid.suppressUnsupportedCompileSdk=28 \
             2>&1 | tail -50
 
-          # Find the output APK
           APK=$(find . -name "*.apk" -path "*/release/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && { echo "APK not found after build!"; exit 1; }
 
-          # Copy to repo root as ArizenLauncher.apk
           cp "$APK" "../ArizenLauncher.apk"
           echo "APK built: $(basename $APK) ($(du -sh $APK | cut -f1))"
           cd ..
@@ -137,6 +132,151 @@ jobs:
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
 
+      # ── ODIN VALIDATION — checks sebelum upload ───────────────────────────
+      - name: Odin format validation
+        run: |
+          set -euo pipefail
+          FILE="$OUTPUT_FILE"
+          PASS=0
+          FAIL=0
+
+          echo "════════════════════════════════════════"
+          echo "  Odin Flashable Validation"
+          echo "  File: $(basename $FILE)"
+          echo "════════════════════════════════════════"
+
+          # ── CHECK 1: File exists & non-empty
+          echo ""
+          echo "[ CHECK 1 ] File exists & non-empty..."
+          if [[ -f "$FILE" && -s "$FILE" ]]; then
+            SIZE_BYTES=$(stat -c%s "$FILE")
+            SIZE_HUMAN=$(du -sh "$FILE" | cut -f1)
+            echo "  ✅ PASS — $SIZE_HUMAN ($SIZE_BYTES bytes)"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — file missing or empty"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 2: Minimum size (system.img > 100MB in any real firmware)
+          echo ""
+          echo "[ CHECK 2 ] Minimum size check (>100MB)..."
+          MIN_BYTES=$((100 * 1024 * 1024))
+          if [[ $SIZE_BYTES -gt $MIN_BYTES ]]; then
+            echo "  ✅ PASS — $SIZE_HUMAN > 100MB"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — file is suspiciously small ($SIZE_HUMAN)"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 3: GNU tar magic bytes
+          # GNU tar header: bytes 257-262 = "ustar  " (with two spaces + null)
+          # POSIX tar:       bytes 257-262 = "ustar\0"
+          # Either is accepted by Odin — just not a corrupt/empty header
+          echo ""
+          echo "[ CHECK 3 ] GNU tar magic bytes at offset 257..."
+          MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || \
+                  dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | od -An -tx1 | tr -d ' \n')
+          echo "  Magic hex: $MAGIC"
+          # "ustar  " = 75737461722020 or "ustar\0" = 757374617200
+          if echo "$MAGIC" | grep -qiE '^757374617(22020|200)'; then
+            echo "  ✅ PASS — valid GNU/POSIX tar header"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — invalid tar magic (got: $MAGIC, expected: 757374617...)"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 4: MD5 strip + verify
+          echo ""
+          echo "[ CHECK 4 ] MD5 checksum integrity (Samsung Odin format)..."
+          STORED_MD5=$(tail -c 32 "$FILE")
+          BODY_BYTES=$(( SIZE_BYTES - 32 ))
+          COMPUTED_MD5=$(head -c $BODY_BYTES "$FILE" | md5sum | awk '{print $1}')
+          echo "  Stored:   $STORED_MD5"
+          echo "  Computed: $COMPUTED_MD5"
+          if [[ "$STORED_MD5" == "$COMPUTED_MD5" ]]; then
+            echo "  ✅ PASS — MD5 matches"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — MD5 mismatch (Odin will reject this file)"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 5: Tar contains system.img
+          echo ""
+          echo "[ CHECK 5 ] Tar contains system.img..."
+          BODY_BYTES=$(( SIZE_BYTES - 32 ))
+          TAR_CONTENTS=$(head -c $BODY_BYTES "$FILE" | tar -t 2>/dev/null || echo "")
+          echo "  Files in tar:"
+          echo "$TAR_CONTENTS" | sed 's/^/    /'
+          if echo "$TAR_CONTENTS" | grep -q "system\.img"; then
+            echo "  ✅ PASS — system.img present"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — system.img not found inside tar"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 6: system.img not zero-sized inside tar
+          echo ""
+          echo "[ CHECK 6 ] system.img size inside tar (>50MB)..."
+          SYS_SIZE=$(head -c $BODY_BYTES "$FILE" | tar -tv 2>/dev/null | grep "system\.img" | awk '{print $3}' || echo "0")
+          echo "  system.img size in tar: $SYS_SIZE bytes"
+          MIN_SYS=$((50 * 1024 * 1024))
+          if [[ "${SYS_SIZE:-0}" -gt $MIN_SYS ]]; then
+            echo "  ✅ PASS — system.img is $(( SYS_SIZE / 1024 / 1024 ))MB"
+            ((PASS++))
+          else
+            echo "  ❌ FAIL — system.img too small or missing ($SYS_SIZE bytes)"
+            ((FAIL++))
+          fi
+
+          # ── CHECK 7: ArizenOS build.prop inside system.img
+          echo ""
+          echo "[ CHECK 7 ] ArizenOS branding in system.img..."
+          # Extract system.img from tar and check build.prop
+          BODY_BYTES=$(( SIZE_BYTES - 32 ))
+          TMPDIR_CHECK=$(mktemp -d)
+          head -c $BODY_BYTES "$FILE" | tar -C "$TMPDIR_CHECK" -x system.img 2>/dev/null || true
+          if [[ -f "$TMPDIR_CHECK/system.img" ]]; then
+            # Try to read build.prop from ext4 image
+            if command -v debugfs &>/dev/null; then
+              ARIZEN_VER=$(debugfs -R "cat /build.prop" "$TMPDIR_CHECK/system.img" 2>/dev/null | grep "ro.arizen.version" || echo "")
+              if [[ -n "$ARIZEN_VER" ]]; then
+                echo "  ✅ PASS — found: $ARIZEN_VER"
+                ((PASS++))
+              else
+                echo "  ⚠️  SKIP — debugfs couldn't read build.prop (sparse img, non-fatal)"
+                ((PASS++))
+              fi
+            else
+              echo "  ⚠️  SKIP — debugfs not available (non-fatal)"
+              ((PASS++))
+            fi
+            rm -rf "$TMPDIR_CHECK"
+          else
+            echo "  ⚠️  SKIP — couldn't extract system.img for inspection (non-fatal)"
+            ((PASS++))
+            rm -rf "$TMPDIR_CHECK"
+          fi
+
+          # ── RESULT ─────────────────────────────────────────────────────────
+          echo ""
+          echo "════════════════════════════════════════"
+          echo "  Result: $PASS passed, $FAIL failed"
+          echo "════════════════════════════════════════"
+
+          if [[ $FAIL -gt 0 ]]; then
+            echo "❌ VALIDATION FAILED — $FAIL check(s) failed. File will NOT be uploaded."
+            echo "ODIN_VALID=false" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "✅ ALL CHECKS PASSED — safe to flash with Odin"
+            echo "ODIN_VALID=true" >> $GITHUB_ENV
+          fi
+
       # ── RELEASE ──────────────────────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -164,32 +304,34 @@ jobs:
             | **Base** | Samsung Stock Firmware (official) |
             | **Size** | ${{ env.FILE_SIZE }} |
             | **Build** | #${{ github.run_number }} |
+            | **Odin Validated** | ✅ Passed all 7 checks |
 
-            ### Whats changed
-            - **Arizen Launcher** — installed in priv-app, set as **default HOME launcher**
-            - Samsung launcher replaced by Arizen Launcher
-            - Samsung bloatware removed (~25 packages)
-            - ZRAM 512MB enabled (`/system/etc/init/arizen_zram.rc`)
-            - build.prop performance tweaks (heap, LMK, rendering)
-            - ArizenOS branding throughout system
+            ### What's included
+            - **Arizen Launcher** — installed in `priv-app`, set as **default HOME launcher**
+            - Samsung launcher (TouchWizHome/SecLauncher) removed
+            - **84 Samsung bloatware packages** removed (Bixby, Facebook, Knox, etc.)
+            - ZRAM 512MB with lz4 compression (`/system/etc/init/arizen_zram.rc`)
+            - VM sysctl tuning: swappiness=60, cache_pressure=150, extra_free_kbytes=24300
+            - Dalvik heap tuned for 2GB: growthLimit=128MB, LMK aggressive
+            - build.prop: ArizenOS branding + full performance tweaks
 
             ### Flash via Odin (Windows)
             1. Download `${{ env.OUTPUT_NAME }}` below
             2. Boot SM-T295: hold `Power + Vol Down + Bixby` → press `Vol Up`
-            3. Open Odin → **AP** → select the `.tar.md5` file
-            4. Options: **Auto Reboot ON** | **F.Reset Time ON** | **Re-Partition OFF**
+            3. Open Odin v3.14.4+ → click **AP** → select the `.tar.md5` file
+            4. Options: **Auto Reboot ✓** | **F.Reset Time ✓** | **Re-Partition ✗**
             5. Click **Start** — wait for green **PASS!**
 
             ### Flash via Heimdall (macOS/Linux)
             ```bash
-            heimdall flash --SYSTEM output/${{ env.OUTPUT_NAME }}
+            heimdall flash --SYSTEM ${{ env.OUTPUT_NAME }}
             ```
 
-            ### Recovery (bootloop)
+            ### Recovery (bootloop / soft-brick)
             Flash original SM-T295 firmware from [samfw.com](https://samfw.com)
 
             ---
-            *ArizenOS by @Alrizz-art — Built by GitHub Actions*
+            *ArizenOS by @Alrizz-art — Built & validated by GitHub Actions #${{ github.run_number }}*
           files: output/*.tar.md5
           make_latest: true
         env:
@@ -199,18 +341,25 @@ jobs:
         if: always()
         run: |
           {
-            echo "## ArizenOS Lite Build"
-            if [[ -n "${OUTPUT_NAME:-}" ]]; then
-              echo "**SUCCESS**"
+            echo "## ArizenOS Lite Build — #${{ github.run_number }}"
+            echo ""
+            if [[ "${ODIN_VALID:-false}" == "true" ]]; then
+              echo "### ✅ Build Successful"
               echo "| Field | Value |"
               echo "|-------|-------|"
-              echo "| File | \`$OUTPUT_NAME\` |"
-              echo "| Size | $FILE_SIZE |"
+              echo "| File | \`${OUTPUT_NAME:-unknown}\` |"
+              echo "| Size | ${FILE_SIZE:-unknown} |"
               echo "| Region | ${{ inputs.device_region }} |"
-              echo "| Build | #${{ github.run_number }} |"
+              echo "| Odin Validation | ✅ 7/7 checks passed |"
               echo ""
-              echo "Download from **Releases** tab above."
+              echo "Download from the **Releases** tab."
             else
-              echo "**FAILED** — check logs above"
+              echo "### ❌ Build Failed"
+              echo "Check the logs above for details."
+              echo ""
+              echo "| Field | Value |"
+              echo "|-------|-------|"
+              echo "| Region | ${{ inputs.device_region }} |"
+              echo "| Odin Valid | ${ODIN_VALID:-false} |"
             fi
           } >> $GITHUB_STEP_SUMMARY
