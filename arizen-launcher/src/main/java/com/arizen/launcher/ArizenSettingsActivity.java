@@ -13,6 +13,7 @@ public class ArizenSettingsActivity extends Activity {
 
     private ArizenSettings settings;
 
+    private TextView btnBack;
     private EditText etApiKey, etCustomUrl;
     private Spinner  spProvider, spModel;
     private TextView tvStatus, tvAboutBuild, tvRamInfo;
@@ -42,6 +43,7 @@ public class ArizenSettingsActivity extends Activity {
     }
 
     private void bindViews() {
+        btnBack       = findViewById(R.id.btn_back);
         etApiKey      = findViewById(R.id.et_api_key);
         etCustomUrl   = findViewById(R.id.et_custom_url);
         spProvider    = findViewById(R.id.sp_provider);
@@ -85,6 +87,8 @@ public class ArizenSettingsActivity extends Activity {
     }
 
     private void setupListeners() {
+        btnBack.setOnClickListener(v -> finish());
+
         spProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
                 settings.setProvider(PROVIDERS[pos]);
