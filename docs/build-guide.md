@@ -1,137 +1,156 @@
 # ArizenOS Lite — Build Guide
 
-> LineageOS → ArizenOS Lite → Odin AP.tar.md5 for SM-T295
+> GSI-based custom ROM → Odin AP.tar.md5 untuk SM-T295
 
 ---
 
-## Overview
+## Apa itu GSI?
+
+**GSI = Generic System Image** — satu file `system.img` yang bisa jalan di semua device Android yang support Project Treble.
+
+SM-T295 support Treble sejak Android 9 (stock Samsung). Artinya bisa pakai GSI apapun — tidak perlu cari build device-specific yang mungkin tidak ada.
 
 ```
-LineageOS zip
-     ↓  scripts/unpack_lineage.sh
-system.img (ext4, mounted)
-     ↓  scripts/inject_arizenos.sh
-system.img (ArizenOS — Launcher + branding + tuning)
-     ↓  scripts/repack_odin.sh
+GSI system.img  (Superior OS / AOSP / LineageOS GSI)
+       ↓  scripts/unpack_gsi.sh
+system.img di-mount (ext4, writable)
+       ↓  scripts/inject_arizenos.sh
+system.img + ArizenOS (Launcher + branding + tuning)
+       ↓  scripts/repack_odin.sh
 ArizenOS-Lite_v1.1_SM-T295_YYYYMMDD_AP.tar.md5
-     ↓  Odin / Heimdall
-SM-T295 running ArizenOS Lite 🚀
+       ↓  Odin / Heimdall
+SM-T295 running ArizenOS Lite
 ```
 
 ---
 
-## Step 0 — Get LineageOS for SM-T295
+## Step 0 — Dapatkan GSI untuk SM-T295
 
-SM-T295 may not have an **official** LineageOS build. Check these sources:
+### Rekomendasi: Superior OS GSI
 
-### Official LineageOS
-- https://lineageos.org/devices/ → search `gtaslte` or `SM-T295`
+Thread XDA khusus SM-T295:
+> **https://xdaforums.com/t/rom-gsi-sm-t295-gto-superior-os-12l-13-gsi-for-galaxy-tab-a-8-0-2019.4650847/**
 
-### Unofficial (XDA — recommended)
-- https://xdaforums.com/c/samsung-galaxy-tab-a-8-0-2019.9148/
-- Search threads for: **LineageOS**, **AOSP**, **crDroid**, **EvolutionX**
+Buka thread tersebut, cari link download (biasanya SourceForge / Google Drive / Telegram channel dev-nya).
 
-### What to look for
-- LineageOS 18.1 (Android 11) — **recommended** (uses ext4, widely tested)
-- LineageOS 19.1 (Android 12) — may use EROFS (incompatible)
-- Any AOSP-based Android 10/11 ROM in zip format
+**Yang perlu didownload:**
+- Format file: `.img` (bukan `.zip`)
+- Variant: `arm64_bvS` atau `arm64_bgS`
+  - `arm64` = 64-bit (Snapdragon 429 adalah arm64)
+  - `bvS` = tanpa GApps (lebih ringan, direkomendasikan untuk ArizenOS)
+  - `bgS` = dengan GApps
 
-### Download automatically
+### Alternatif GSI lain (semua arm64)
+
+| ROM | Link | Android |
+|-----|------|---------|
+| **Superior OS GSI** | XDA thread di atas | 12L / 13 |
+| AOSP GSI (Google) | https://developer.android.com/topic/generic-system-image | 12 / 13 |
+| LineageOS GSI | https://github.com/phhusson/treble_experimentations/releases | 19/20 |
+| crDroid GSI | https://sourceforge.net/projects/crdroid-gsi/ | 13 |
+| Pixel Experience GSI | https://github.com/ponces/treble_build_pe/releases | 13 |
+
+### ⚠️ Masalah EROFS
+
+GSI Android 12L/13 sering pakai **EROFS** (filesystem read-only terkompresi) — tidak bisa dimodifikasi langsung.
+
+Jika dapat error EROFS:
+- Cari variant yang ada tulisan **ext4** di nama filenya
+- Atau cari build Android 11 (biasanya ext4)
+- Atau tanya dev di thread XDA apakah ada ext4 variant
+
 ```bash
-bash scripts/download_lineage.sh
+# Cek apakah .img kamu EROFS atau ext4:
+file your_system.img
+# ext4 filesystem data → ✅ bisa dipakai
+# EROFS filesystem     → ❌ cari yang lain
 ```
 
-### Or manually
+### Cara taruh file
+
 ```bash
 mkdir -p firmware
-# Copy your LineageOS zip here:
-cp /path/to/lineage-18.1-*-gtaslte*.zip firmware/
+# Salin .img ke sini:
+cp /path/to/system_arm64_bvS.img firmware/
+# Atau download langsung jika ada URL:
+bash scripts/download_rom.sh "https://direct-url.com/system.img"
 ```
 
 ---
 
-## Step 1 — Prerequisites
+## Step 1 — Persiapan (Linux/macOS/WSL2)
 
-### Ubuntu / Debian
+### Ubuntu / Debian / WSL2
 ```bash
-sudo apt-get update
-sudo apt-get install -y \
+sudo apt-get update && sudo apt-get install -y \
     android-tools-fsutils \
     e2fsprogs \
     brotli \
+    xz-utils \
     unzip \
     lz4 \
-    python3 \
-    wget \
-    curl \
     file \
-    git
+    python3 \
+    wget curl git
 ```
 
-### macOS — use Docker
+### macOS — pakai Docker
 ```bash
-# Install Docker Desktop first
-docker pull ubuntu:22.04
+# Pastikan Docker Desktop sudah terinstall
 docker run --privileged -it \
-    -v $(pwd):/workspace \
+    -v "$(pwd):/workspace" \
     ubuntu:22.04 bash
 
-# Inside container:
+# Di dalam container:
 cd /workspace
-apt-get update && apt-get install -y android-tools-fsutils e2fsprogs brotli unzip lz4 python3 wget curl file
+apt-get update && apt-get install -y \
+    android-tools-fsutils e2fsprogs brotli xz-utils unzip lz4 file python3 wget curl git
 ```
 
-### Windows
-Use WSL2 (Ubuntu 22.04) — same commands as Ubuntu.
+### Windows — pakai WSL2
+```powershell
+# PowerShell (sebagai Admin)
+wsl --install -d Ubuntu-22.04
+# Lalu buka Ubuntu dari Start Menu, jalankan perintah Ubuntu di atas
+```
 
 ---
 
 ## Step 2 — Build Arizen Launcher APK
 
-The launcher must be compiled before injecting.
-
-### Requirements
-- Java 17+ (`sudo apt install openjdk-17-jdk`)
-- Android SDK (or use the included Gradle wrapper — downloads SDK automatically)
-
 ```bash
+# Butuh Java 17
+sudo apt install openjdk-17-jdk  # Ubuntu
+
 cd arizen-launcher
 chmod +x gradlew
 ./gradlew assembleRelease
 
-# Copy APK to repo root
 cp app/build/outputs/apk/release/app-release*.apk ../ArizenLauncher.apk
 cd ..
-ls -lh ArizenLauncher.apk
+ls -lh ArizenLauncher.apk   # harus ada dan > 1MB
 ```
 
-If you don't have Android SDK, the CI (GitHub Actions) builds it automatically.
+> Jika tidak mau setup Java, biarkan CI/GitHub Actions yang build otomatis.
 
 ---
 
-## Step 3 — Unpack LineageOS
+## Step 3 — Unpack GSI
 
 ```bash
-sudo bash scripts/unpack_lineage.sh
+sudo bash scripts/unpack_gsi.sh
+# Script otomatis deteksi file di firmware/
+# Atau tentukan path:
+sudo bash scripts/unpack_gsi.sh firmware/system_arm64_bvS.img
 ```
 
-This script:
-1. Locates the LineageOS zip in `firmware/`
-2. Auto-detects format: **payload.bin** / **system.new.dat.br** / **system.img**
-3. Converts to raw ext4 if needed (brotli decompression, sdat2img)
-4. Rejects EROFS (read-only, non-modifiable) — use Android 11 build if this happens
-5. Expands image by 250MB for ArizenOS files
-6. Mounts at `work/system_mount/`
-
-### Supported input formats
-| Format | Description | LineageOS version |
-|--------|-------------|-------------------|
-| `system.img` | Raw ext4 in zip | Some 17.x/18.x |
-| `system.new.dat.br` | Brotli block-based | Most 17.x/18.x |
-| `payload.bin` | A/B OTA format | 20+ (Android 13) |
-| EROFS | ❌ Not supported | 20+ (Android 13) |
-
-**Recommendation: Use LineageOS 18.1 (Android 11)**
+Script ini:
+1. Deteksi format: raw `.img`, sparse, `.xz`, `.zip`
+2. Convert sparse → raw ext4 jika perlu
+3. Cek filesystem (e2fsck)
+4. Expand +250MB untuk file ArizenOS
+5. Mount di `work/system_mount/`
+6. Deteksi system-as-root (SAR) structure otomatis
 
 ---
 
@@ -141,105 +160,103 @@ This script:
 sudo bash scripts/inject_arizenos.sh
 ```
 
-What this does (10 steps):
-1. Remove stock launchers (Trebuchet, Launcher3, Launcher3QuickStep)
-2. Install Arizen Launcher as default HOME activity
-3. Remove LineageOS extras (AudioFX, Eleven, Jelly, Recorder)
-4. Install ArizenOS boot animation (if available in `bootanimation/`)
-5. Install wallpaper (if `arizen_wallpaper.png` exists)
-6. Patch `build.prop` — full ArizenOS identity (1.1 Zenith) + performance tweaks
-7. Install ZRAM init.rc (`/system/etc/init/arizen_zram.rc`)
-8. Install CPU + LMK init.rc (`/system/etc/init/arizen_perf.rc`)
-9. Install performance profiles script + sysctl config
-10. Create `/system/etc/arizen/version.json`
-
-### What's NOT touched
-- LineageOS kernel (boot.img) — untouched, keeps root/TWRP compatibility
-- Vendor partition — untouched, keeps hardware blobs
-- `ro.lineage.*` properties — kept for app compatibility
-- Core LineageOS apps (Phone, Contacts, Settings, etc.)
+Yang dilakukan (10 langkah):
+1. Hapus launcher bawaan GSI (Trebuchet / Launcher3 / PixelLauncher)
+2. Install Arizen Launcher sebagai default HOME
+3. Bersihkan app GSI yang tidak perlu
+4. Install boot animation ArizenOS (jika ada di `bootanimation/`)
+5. Install wallpaper (jika ada `arizen_wallpaper.png`)
+6. Patch `build.prop`: identitas ArizenOS 1.1 Zenith
+7. Install ZRAM init.rc
+8. Install CPU + LMK performance init.rc
+9. Install performance profiles + sysctl config
+10. Buat `version.json` manifest
 
 ---
 
-## Step 5 — Repack to Odin AP.tar.md5
+## Step 5 — Repack jadi Odin AP.tar.md5
 
 ```bash
 sudo bash scripts/repack_odin.sh
 ```
 
-This script:
-1. Unmounts the system image
-2. Runs `e2fsck` to repair filesystem
-3. Shrinks image to minimum size (`resize2fs -M`)
-4. Converts raw ext4 → Android sparse image (`img2simg`)
-5. Extracts `boot.img` and `vendor.img` from LineageOS zip (if present)
-6. Creates Odin tar archive with `system.img` + `boot.img` + `vendor.img`
-7. Appends MD5 hash (Odin self-check format)
-8. Validates: size, tar magic bytes, MD5 trailer
-
 Output: `output/ArizenOS-Lite_v1.1_SM-T295_YYYYMMDD_AP.tar.md5`
+
+---
+
+## Step 6 — Flash via Odin
+
+### Persiapan: Flash TWRP dulu (wajib)
+
+SM-T295 perlu TWRP custom recovery sebelum bisa flash GSI-based ROM.
+
+1. Download TWRP untuk SM-T295: https://twrp.me/samsung/samsunggalaxytaba82019lte.html
+2. Boot ke Download Mode: `Power + Vol Down` → `Vol Up` untuk konfirmasi
+3. Odin → AP → pilih TWRP `.tar` → Start
+4. Setelah reboot, tahan `Power + Vol Up` untuk masuk TWRP
+
+### Flash ArizenOS via Odin
+
+1. Download `ArizenOS-Lite_v1.1_SM-T295_YYYYMMDD_AP.tar.md5`
+2. Boot ke Download Mode
+3. Buka **Odin v3.14+**
+4. Klik **AP** → pilih file `.tar.md5`
+5. Options: ✅ Auto Reboot · ✅ F.Reset Time · ❌ Re-Partition
+6. **Start** → tunggu **PASS!**
+
+### Flash via Heimdall (Linux/macOS)
+
+```bash
+heimdall flash --SYSTEM work/system_raw.img --no-reboot
+```
+
+### Flash via TWRP (alternatif)
+
+1. Reboot ke TWRP (Power + Vol Up)
+2. Wipe → Dalvik/ART Cache + Cache
+3. Install → pilih file `.tar.md5`
+4. Reboot System
 
 ---
 
 ## Troubleshooting
 
 ### "EROFS filesystem detected"
-Use an older LineageOS build (18.1 / Android 11). EROFS is a read-only compressed filesystem used in Android 12+ LineageOS builds.
+Cari variant **ext4** dari ROM yang sama, atau coba ROM Android 11.
 
 ### "Mount failed"
-Run with `sudo`. If in a Docker container, add `--privileged` flag.
+Jalankan dengan `sudo`. Di Docker, tambahkan flag `--privileged`.
 
-### "sdat2img not found"
+### "simg2img not found"
 ```bash
-curl -o /tmp/sdat2img.py https://raw.githubusercontent.com/xpirt/sdat2img/master/sdat2img.py
-chmod +x /tmp/sdat2img.py
-sudo mv /tmp/sdat2img.py /usr/local/bin/sdat2img
+sudo apt install android-tools-fsutils
 ```
 
-### "payload-dumper-go not found"
-Only needed for A/B (payload.bin) zips. Install from:
-https://github.com/ssut/payload-dumper-go/releases
-
-### ArizenLauncher.apk not found
+### "ArizenLauncher.apk not found"
 ```bash
-cd arizen-launcher
-./gradlew assembleRelease
+cd arizen-launcher && ./gradlew assembleRelease
 cp app/build/outputs/apk/release/*.apk ../ArizenLauncher.apk
 ```
 
-### Device bootloops after flash
-1. Boot into TWRP recovery (Vol Up + Power at boot)
-2. Flash LineageOS zip directly from TWRP (Wipe → flash)
-3. Or flash original Samsung firmware from samfw.com via Odin
+### Device bootloop setelah flash
+1. Boot ke TWRP (Power + Vol Up)
+2. Wipe → Factory Reset
+3. Flash ulang ROM base (GSI) via TWRP
+4. Atau flash Samsung stock dari [samfw.com](https://samfw.com)
 
 ---
 
-## GitHub Actions CI
+## Estimasi Waktu Build
 
-The included workflow (`.github/workflows/build.yml`) can automate the entire build:
-
-1. Fork the repo
-2. Add `LINEAGE_ZIP_URL` as a repository secret (direct download URL for your LineageOS zip)
-3. Go to Actions → Build ArizenOS Lite → Run workflow
-4. The workflow will:
-   - Download LineageOS zip
-   - Build Arizen Launcher
-   - Run unpack → inject → repack
-   - Upload output as a GitHub Release
+| Step | Waktu |
+|------|-------|
+| Download GSI | 10–30 menit (tergantung koneksi) |
+| Build Launcher | 3–8 menit |
+| Unpack GSI | 5–15 menit |
+| Inject ArizenOS | 1–2 menit |
+| Repack Odin | 5–15 menit |
+| **Total** | **~25–70 menit** |
 
 ---
 
-## Full Build Time Estimates
-
-| Step | Local (Linux) | CI (GitHub Actions) |
-|------|---------------|---------------------|
-| Download LineageOS | 5–20 min | 5–15 min |
-| Build Launcher | 2–5 min | 3–8 min |
-| Unpack system.img | 5–10 min | 5–10 min |
-| Inject ArizenOS | 1–2 min | 1–2 min |
-| Repack Odin | 5–15 min | 5–15 min |
-| **Total** | **~20–50 min** | **~20–50 min** |
-
----
-
-*ArizenOS Lite v1.1 Zenith — SM-T295 (gtaslte)*
+*ArizenOS Lite v1.1 Zenith — SM-T295 (GSI-based)*
