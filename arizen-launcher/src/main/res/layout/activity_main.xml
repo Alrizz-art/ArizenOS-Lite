@@ -4,15 +4,79 @@
     android:layout_height="match_parent"
     android:background="@color/bg_primary">
 
+    <!-- Status bar spacer -->
     <View android:id="@+id/status_bar_spacer"
         android:layout_width="match_parent"
         android:layout_height="28dp"
         android:layout_alignParentTop="true"/>
 
+    <!-- Live stat bar: RAM + performance profile indicator -->
+    <LinearLayout android:id="@+id/stat_bar"
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
+        android:layout_below="@id/status_bar_spacer"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:background="@color/stat_bar_bg">
+        <TextView android:id="@+id/tv_stat_ram"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="RAM —"
+            android:textColor="#44FF88"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.05"/>
+        <LinearLayout android:id="@+id/btn_cmd_palette"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/btn_outline_bg"
+            android:layout_marginEnd="8dp"
+            android:clickable="true" android:focusable="true">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="> CMD"
+                android:textColor="#00D4AA"
+                android:textSize="9sp"
+                android:fontFamily="monospace"/>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/btn_workspace"
+            android:layout_width="wrap_content"
+            android:layout_height="22dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:background="@drawable/btn_outline_bg"
+            android:layout_marginEnd="8dp"
+            android:clickable="true" android:focusable="true">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WS"
+                android:textColor="#4A9EFF"
+                android:textSize="9sp"
+                android:fontFamily="monospace"/>
+        </LinearLayout>
+        <TextView android:id="@+id/tv_stat_perf"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚖"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <!-- Clock header -->
     <LinearLayout android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/status_bar_spacer"
+        android:layout_below="@id/stat_bar"
         android:orientation="vertical"
         android:paddingStart="32dp"
         android:paddingEnd="32dp"
@@ -48,11 +112,12 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- AI Command Center card -->
     <LinearLayout android:id="@+id/ai_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/header"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="16dp"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:background="@drawable/card_bg"
@@ -61,7 +126,7 @@
         android:gravity="center_vertical"
         android:clickable="true"
         android:focusable="true">
-        <FrameLayout android:id="@+id/ai_orb_container"
+        <FrameLayout
             android:layout_width="52dp"
             android:layout_height="52dp">
             <View android:id="@+id/ai_glow_ring"
@@ -137,12 +202,13 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- App grid scroll -->
     <ScrollView android:id="@+id/app_scroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_below="@id/ai_card"
         android:layout_above="@id/dock_container"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
         android:scrollbars="none"
         android:overScrollMode="never">
         <LinearLayout android:id="@+id/app_grid"
@@ -155,6 +221,7 @@
             android:paddingBottom="8dp"/>
     </ScrollView>
 
+    <!-- Dock -->
     <LinearLayout android:id="@+id/dock_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -165,12 +232,12 @@
         android:gravity="center">
         <LinearLayout android:id="@+id/dock"
             android:layout_width="wrap_content"
-            android:layout_height="68dp"
+            android:layout_height="64dp"
             android:background="@drawable/dock_bg"
             android:orientation="horizontal"
             android:gravity="center"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"/>
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"/>
     </LinearLayout>
 
 </RelativeLayout>

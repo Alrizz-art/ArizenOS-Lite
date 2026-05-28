@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#000000">
+
+    <!-- Header bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="#07FFFFFF">
+        <TextView android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="←"
+            android:textColor="#4A9EFF"
+            android:textSize="18sp"
+            android:padding="8dp"
+            android:clickable="true" android:focusable="true"/>
+        <TextView android:id="@+id/tv_focus_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="WORKSPACE MODE"
+            android:textColor="#55FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:gravity="center"
+            android:clickable="true" android:focusable="true"
+            android:longClickable="true"/>
+        <TextView android:id="@+id/tv_session_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textColor="#33FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:padding="4dp"/>
+    </LinearLayout>
+
+    <!-- Clock block -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="16dp">
+        <TextView android:id="@+id/tv_ws_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textSize="64sp"
+            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-thin"
+            android:letterSpacing="-0.03"/>
+        <TextView android:id="@+id/tv_ws_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Senin, 1 Jan"
+            android:textSize="14sp"
+            android:textColor="#55FFFFFF"
+            android:fontFamily="sans-serif-light"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- Quick action row -->
+    <LinearLayout android:id="@+id/quick_launch_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+        <TextView android:id="@+id/btn_ws_ai"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="AI"
+            android:textColor="#4A9EFF"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:background="@drawable/btn_outline_bg"
+            android:layout_marginEnd="8dp"
+            android:clickable="true" android:focusable="true"/>
+        <TextView android:id="@+id/btn_ws_monitor"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="MONITOR"
+            android:textColor="#44FF88"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:background="@drawable/btn_outline_bg"
+            android:layout_marginEnd="8dp"
+            android:clickable="true" android:focusable="true"/>
+        <TextView android:id="@+id/btn_ws_cmd"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="> CMD"
+            android:textColor="#00D4AA"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:background="@drawable/btn_outline_bg"
+            android:clickable="true" android:focusable="true"/>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="  WORKSPACE APPS"
+        android:textColor="#22FFFFFF"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.2"
+        android:paddingStart="20dp"
+        android:paddingBottom="8dp"/>
+
+    <!-- App list -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:overScrollMode="never">
+        <LinearLayout android:id="@+id/workspace_apps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="24dp"/>
+    </ScrollView>
+
+</LinearLayout>

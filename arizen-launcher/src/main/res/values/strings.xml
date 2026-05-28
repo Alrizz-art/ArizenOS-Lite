@@ -13,7 +13,7 @@
 
     <!-- AI Assistant -->
     <string name="arizen_no_key">API key belum dikonfigurasi.\n\nBuka Arizen Settings → Arizen AI → masukkan API key Groq (gratis di console.groq.com) atau provider lainnya.\n\nSetelah disimpan, kembali ke sini untuk mulai chat.</string>
-    <string name="hint_ask">Tanya apa saja, atau ketik perintah...</string>
+    <string name="hint_ask">Tanya apa saja, atau ketik perintah…</string>
 
     <!-- Status strings -->
     <string name="status_saved">Konfigurasi disimpan!</string>
@@ -27,9 +27,33 @@
     <string name="labs_subtitle">AI Ecosystem</string>
     <string name="boost_running">Meng-boost RAM…</string>
 
+    <!-- Command Palette -->
+    <string name="cmd_palette_hint">Ketik perintah atau nama app…</string>
+    <string name="cmd_palette_title">Command Palette</string>
+
+    <!-- System Monitor -->
+    <string name="monitor_title">System Monitor</string>
+    <string name="monitor_ram">RAM</string>
+    <string name="monitor_cpu">CPU</string>
+    <string name="monitor_battery">Baterai</string>
+    <string name="monitor_thermal">Thermal</string>
+
+    <!-- Workspace -->
+    <string name="workspace_title">Workspace Mode</string>
+    <string name="workspace_focus_default">WORKSPACE MODE</string>
+
+    <!-- Performance profiles -->
+    <string name="perf_balanced">Balanced</string>
+    <string name="perf_performance">Performance</string>
+    <string name="perf_saver">Battery Saver</string>
+
     <!-- Buttons -->
     <string name="btn_send">Kirim</string>
     <string name="btn_save">Simpan</string>
     <string name="btn_test">Test</string>
     <string name="btn_back">←</string>
+    <string name="btn_boost">Boost RAM</string>
+    <string name="btn_cmd">CMD</string>
+    <string name="btn_monitor">Monitor</string>
+    <string name="btn_workspace">Workspace</string>
 </resources>

@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:scrollbars="none"
+    android:overScrollMode="never">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="#0A0A0A">
+            <TextView android:id="@+id/btn_back"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="←"
+                android:textColor="#4A9EFF"
+                android:textSize="20sp"
+                android:padding="8dp"
+                android:clickable="true" android:focusable="true"/>
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="System Monitor"
+                android:textColor="#FFFFFF"
+                android:textSize="17sp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:letterSpacing="0.05"/>
+            <TextView android:id="@+id/tv_perf_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Balanced"
+                android:textColor="#4A9EFF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:padding="4dp"/>
+        </LinearLayout>
+
+        <TextView android:id="@+id/tv_uptime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Uptime: —"
+            android:textColor="#33FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:paddingStart="24dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="2dp"/>
+
+        <!-- RAM Card -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="  RAM"
+            android:textColor="#44FF88"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:paddingStart="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="6dp"/>
+        <LinearLayout android:id="@+id/card_ram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/monitor_card_bg"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:padding="16dp">
+            <LinearLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView android:id="@+id/tv_ram_free"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="— MB free"
+                    android:textColor="#44FF88"
+                    android:textSize="22sp"
+                    android:fontFamily="sans-serif-light"/>
+                <TextView android:id="@+id/tv_ram_pct"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—%"
+                    android:textColor="#44FF88"
+                    android:textSize="26sp"
+                    android:fontFamily="sans-serif-thin"/>
+            </LinearLayout>
+            <TextView android:id="@+id/tv_ram_used"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="— / — MB"
+                android:textColor="#55FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"/>
+            <!-- Progress bar -->
+            <FrameLayout android:layout_width="match_parent" android:layout_height="4dp"
+                android:background="#111111">
+                <View android:id="@+id/bar_ram"
+                    android:layout_width="0dp"
+                    android:layout_height="4dp"
+                    android:background="#44FF88"/>
+            </FrameLayout>
+            <TextView android:id="@+id/btn_ram_boost"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BOOST RAM"
+                android:textColor="#44FF88"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.15"
+                android:paddingTop="12dp"
+                android:clickable="true" android:focusable="true"/>
+        </LinearLayout>
+
+        <!-- CPU Card -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="  CPU"
+            android:textColor="#4A9EFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:paddingStart="20dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="6dp"/>
+        <LinearLayout android:id="@+id/card_cpu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/monitor_card_bg"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:padding="16dp"
+            android:clickable="true" android:focusable="true">
+            <LinearLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView android:id="@+id/tv_cpu_load"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="—%"
+                    android:textColor="#4A9EFF"
+                    android:textSize="26sp"
+                    android:fontFamily="sans-serif-thin"/>
+                <LinearLayout android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="end">
+                    <TextView android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="GOVERNOR"
+                        android:textColor="#33FFFFFF"
+                        android:textSize="9sp"
+                        android:fontFamily="monospace"/>
+                    <TextView android:id="@+id/tv_cpu_gov"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="#4A9EFF"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"/>
+                </LinearLayout>
+            </LinearLayout>
+            <FrameLayout android:layout_width="match_parent" android:layout_height="4dp"
+                android:background="#111111" android:layout_marginTop="10dp">
+                <View android:id="@+id/bar_cpu"
+                    android:layout_width="0dp"
+                    android:layout_height="4dp"
+                    android:background="#4A9EFF"/>
+            </FrameLayout>
+            <TextView android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TAP untuk ganti performance profile"
+                android:textColor="#22FFFFFF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:paddingTop="10dp"/>
+        </LinearLayout>
+
+        <!-- Battery Card -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="  BATERAI"
+            android:textColor="#FF9F0A"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:paddingStart="20dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="6dp"/>
+        <LinearLayout android:id="@+id/card_batt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/monitor_card_bg"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:padding="16dp">
+            <LinearLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <LinearLayout android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:id="@+id/tv_batt_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Baterai"
+                        android:textColor="#66FFFFFF"
+                        android:textSize="11sp"
+                        android:fontFamily="monospace"/>
+                    <TextView android:id="@+id/tv_batt_pct"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—%"
+                        android:textColor="#44FF88"
+                        android:textSize="26sp"
+                        android:fontFamily="sans-serif-thin"/>
+                </LinearLayout>
+                <LinearLayout android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="end">
+                    <TextView android:id="@+id/tv_batt_temp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—°C"
+                        android:textColor="#FF9F0A"
+                        android:textSize="14sp"
+                        android:fontFamily="monospace"/>
+                    <TextView android:id="@+id/tv_batt_volt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—V"
+                        android:textColor="#55FFFFFF"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"/>
+                </LinearLayout>
+            </LinearLayout>
+            <FrameLayout android:layout_width="match_parent" android:layout_height="4dp"
+                android:background="#111111" android:layout_marginTop="10dp">
+                <View android:id="@+id/bar_batt"
+                    android:layout_width="0dp"
+                    android:layout_height="4dp"
+                    android:background="#44FF88"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Thermal Card -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="  THERMAL"
+            android:textColor="#FF453A"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.2"
+            android:paddingStart="20dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="6dp"/>
+        <LinearLayout android:id="@+id/card_thermal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/monitor_card_bg"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:padding="16dp">
+            <TextView android:id="@+id/tv_thermal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Membaca sensor…"
+                android:textColor="#CCFFFFFF"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:lineSpacingMultiplier="1.5"/>
+        </LinearLayout>
+
+        <TextView android:id="@+id/tv_build_info_mon"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ArizenOS Lite  |  SM-T295"
+            android:textColor="#1AFFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:gravity="center"
+            android:padding="16dp"/>
+        <View android:layout_width="match_parent" android:layout_height="20dp"/>
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,59 @@
+# ArizenOS Lite — build.prop patch reference
+# These properties are applied by inject_arizenos.sh via patch_prop()
+# This file is for documentation and manual reference only.
+#
+# Apply manually:
+#   adb shell "su -c 'mount -o rw,remount /system'"
+#   adb push build.prop.patch /sdcard/
+#   adb shell "su -c 'while IFS= read -r line; do ...'"
+
+# ─── ArizenOS Identity ────────────────────────────────────────────────────────
+ro.build.display.id=ArizenOS-Lite/1.1/SM-T295
+ro.product.brand=ArizenOS
+ro.product.manufacturer=ArizenLabs
+ro.product.name=arizen_t295
+ro.product.device=SM-T295
+ro.product.model=ArizenOS Lite Edition
+ro.build.flavor=arizen_t295-user
+ro.build.tags=release-keys
+ro.build.type=user
+ro.arizen.version=1.1
+ro.arizen.variant=Lite
+ro.arizen.codename=Zenith
+ro.arizen.labs.enabled=true
+ro.arizen.ai.enabled=true
+ro.arizen.features.cmd_palette=true
+ro.arizen.features.workspace=true
+ro.arizen.features.monitor=true
+
+# ─── Dalvik/ART Heap (2GB RAM optimized) ────────────────────────────────────
+dalvik.vm.heapstartsize=8m
+dalvik.vm.heapgrowthlimit=128m
+dalvik.vm.heapsize=256m
+dalvik.vm.heaptargetutilization=0.75
+dalvik.vm.heapminfree=2m
+dalvik.vm.heapmaxfree=8m
+
+# ─── Background Process Limits ───────────────────────────────────────────────
+ro.config.max_starting_bg=2
+ro.sys.fw.bg_apps_limit=8
+ro.sys.fw.use_trim_settings=true
+persist.sys.fw.trim_enable_memory=1024
+persist.sys.purgeable_assets=1
+
+# ─── LMK ─────────────────────────────────────────────────────────────────────
+ro.lmk.kill_heaviest_task=true
+ro.lmk.kill_timeout_ms=100
+ro.lmk.use_minfree_levels=true
+ro.lmk.low=1001
+ro.lmk.medium=800
+ro.lmk.critical=0
+
+# ─── Performance + Rendering ─────────────────────────────────────────────────
+ro.config.animation_scale=0.5
+ro.config.low_ram=false
+persist.sys.dalvik.multithread=true
+ro.surface_flinger.max_frame_buffer_acquired_buffers=3
+debug.sf.reuse_framebuffers=1
+ro.config.hw_quickpoweron=true
+persist.sys.default_font=Roboto

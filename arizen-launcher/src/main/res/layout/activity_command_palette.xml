@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#E6000000">
+
+    <View android:layout_width="match_parent" android:layout_height="32dp"/>
+
+    <!-- Search bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:background="@drawable/command_palette_bg">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=">"
+            android:textColor="#4A9EFF"
+            android:textSize="18sp"
+            android:fontFamily="monospace"
+            android:paddingEnd="10dp"/>
+        <EditText
+            android:id="@+id/et_command"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:hint="Ketik perintah atau nama app…"
+            android:hintTextColor="#44FFFFFF"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:fontFamily="monospace"
+            android:background="@null"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:maxLines="1"
+            android:singleLine="true"/>
+        <TextView
+            android:id="@+id/btn_close"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="✕"
+            android:textColor="#44FFFFFF"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"/>
+    </LinearLayout>
+
+    <!-- Hint text -->
+    <TextView
+        android:id="@+id/tv_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ketik > untuk perintah sistem, atau nama app"
+        android:textColor="#44FFFFFF"
+        android:textSize="12sp"
+        android:fontFamily="monospace"
+        android:paddingStart="32dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone"/>
+
+    <!-- Command list -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:overScrollMode="never"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+        <LinearLayout
+            android:id="@+id/list_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+    </ScrollView>
+
+    <!-- Bottom hint -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingTop="10dp"
+        android:paddingBottom="24dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ENTER tanya AI  ·  TAP jalankan  ·  ← tutup"
+            android:textColor="#1AFFFFFF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.08"/>
+    </LinearLayout>
+
+</LinearLayout>

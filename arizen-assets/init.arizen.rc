@@ -1,0 +1,39 @@
+# ArizenOS Lite — Master init.rc
+# Aggregates all Arizen init snippets for SM-T295
+# This file is NOT placed in /system directly —
+# the individual *.rc files in /system/etc/init/ are the actual init scripts.
+# This is a reference/template document.
+
+# ─── on boot ─────────────────────────────────────────────────────────────────
+on boot
+    # Mark ArizenOS as initialized
+    setprop ro.arizen.status ready
+    setprop ro.arizen.initialized true
+    setprop ro.arizen.perf.profile balanced
+
+    # CPU governor: schedutil (kernel-driven, efficient on SD429)
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor schedutil
+    write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor schedutil
+
+    # LMK — 2GB profile (minfree in pages: 18/24/32/40/64/96 MB)
+    write /sys/module/lowmemorykiller/parameters/minfree 4608,6144,8192,10240,16384,24576
+    write /sys/module/lowmemorykiller/parameters/adj 0,1,2,3,4,9
+
+# ─── on post-fs-data ─────────────────────────────────────────────────────────
+on post-fs-data
+    # ZRAM — 512MB lz4 (see arizen_zram.rc for details)
+    write /sys/block/zram0/comp_algorithm lz4
+    write /sys/block/zram0/disksize 536870912
+    exec /system/bin/sh -c "mkswap /dev/block/zram0 2>/dev/null; swapon /dev/block/zram0 -p 5 2>/dev/null || true"
+
+    # VM tuning
+    write /proc/sys/vm/swappiness 60
+    write /proc/sys/vm/dirty_ratio 10
+    write /proc/sys/vm/dirty_background_ratio 5
+    write /proc/sys/vm/vfs_cache_pressure 100
+    write /proc/sys/vm/extra_free_kbytes 24576
+    write /proc/sys/vm/min_free_kbytes 16384
+    write /proc/sys/vm/oom_kill_allocating_task 0
+    write /proc/sys/vm/page-cluster 0

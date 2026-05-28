@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.arizen.launcher"
-    android:versionCode="5"
-    android:versionName="1.0">
+    android:versionCode="6"
+    android:versionName="1.1">
 
-    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28"/>
+    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="34"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -13,11 +13,13 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.SET_ALARM"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:label="@string/app_name"
@@ -26,10 +28,13 @@
         android:allowBackup="false"
         android:largeHeap="false">
 
+        <!-- Home screen launcher -->
         <activity android:name=".MainActivity"
-            android:launchMode="singleTask" android:stateNotNeeded="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
             android:screenOrientation="unspecified"
-            android:windowSoftInputMode="adjustResize" android:exported="true">
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
             <intent-filter android:priority="1">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.HOME"/>
@@ -37,22 +42,28 @@
             </intent-filter>
         </activity>
 
+        <!-- AI Assistant -->
         <activity android:name=".ArizenAssistantActivity"
             android:theme="@style/ArizenAssistantTheme"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize|stateVisible"
             android:exported="false"/>
 
+        <!-- Labs hub -->
         <activity android:name=".ArizenLabsActivity"
-            android:theme="@style/ArizenLabsTheme" android:exported="false"/>
+            android:theme="@style/ArizenLabsTheme"
+            android:exported="false"/>
 
+        <!-- Settings -->
         <activity android:name=".ArizenSettingsActivity"
-            android:label="@string/settings_title" android:exported="false"/>
+            android:label="@string/settings_title"
+            android:exported="false"/>
 
-        <!-- Routines activities -->
+        <!-- Routines -->
         <activity android:name=".ArizenRoutinesActivity"
             android:label="Arizen Routines"
-            android:theme="@style/ArizenTheme" android:exported="false"/>
+            android:theme="@style/ArizenTheme"
+            android:exported="false"/>
 
         <activity android:name=".ArizenRoutineEditorActivity"
             android:label="Edit Rutinitas"
@@ -60,12 +71,36 @@
             android:windowSoftInputMode="adjustResize"
             android:exported="false"/>
 
+        <!-- Command Palette — translucent overlay -->
+        <activity android:name=".ArizenCommandPaletteActivity"
+            android:theme="@style/ArizenCommandPaletteTheme"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize|stateVisible"
+            android:exported="false"/>
+
+        <!-- System Monitor -->
+        <activity android:name=".ArizenSystemMonitorActivity"
+            android:theme="@style/ArizenMonitorTheme"
+            android:label="@string/monitor_title"
+            android:exported="false"/>
+
+        <!-- Workspace Mode -->
+        <activity android:name=".ArizenWorkspaceActivity"
+            android:theme="@style/ArizenWorkspaceTheme"
+            android:label="@string/workspace_title"
+            android:exported="false"/>
+
+        <!-- Background services -->
         <service android:name=".ArizenWakeService"
-            android:foregroundServiceType="microphone" android:exported="false"/>
+            android:foregroundServiceType="microphone"
+            android:exported="false"/>
 
-        <service android:name=".ArizenAmbientService" android:exported="false"/>
+        <service android:name=".ArizenAmbientService"
+            android:exported="false"/>
 
-        <receiver android:name=".ArizenBootReceiver" android:exported="false">
+        <!-- Boot receiver -->
+        <receiver android:name=".ArizenBootReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
