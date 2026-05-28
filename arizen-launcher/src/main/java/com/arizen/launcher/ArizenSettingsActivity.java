@@ -130,7 +130,7 @@ public class ArizenSettingsActivity extends Activity {
         btnClearHistory.setOnClickListener(v -> {
             ArizenAPIClient.clearHistory();
             tvStatus.setText("Chat history dibersihkan");
-            tvStatus.setTextColor(0xFF88FFFFFF);
+            tvStatus.setTextColor(0x88FFFFFF);
         });
 
         btnRamBoost.setOnClickListener(v -> {
@@ -156,7 +156,7 @@ public class ArizenSettingsActivity extends Activity {
             } else {
                 stopService(svc);
                 tvStatus.setText("Hey Arizen dinonaktifkan");
-                tvStatus.setTextColor(0xFF88FFFFFF);
+                tvStatus.setTextColor(0x88FFFFFF);
             }
         });
     }
