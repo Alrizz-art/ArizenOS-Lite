@@ -1,0 +1,265 @@
+name: CI — ArizenOS Lite (Auto Build on Push)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - 'CONTRIBUTING.md'
+  workflow_dispatch:
+    inputs:
+      gsi_url:
+        description: 'Override GSI URL (kosongkan = pakai secret GSI_URL)'
+        required: false
+        default: ''
+      arizen_version:
+        description: 'Override versi ArizenOS'
+        required: false
+        default: ''
+
+env:
+  DEVICE_MODEL: SM-T295
+  ARIZEN_ANDROID: "9"
+
+jobs:
+  build:
+    name: "Build ArizenOS Lite — GSI"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      # ── 1. CHECKOUT ────────────────────────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 2. RESOLVE VERSION & GSI URL ───────────────────────────────────────
+      - name: Resolve build variables
+        id: vars
+        run: |
+          # Version: input override → build_config → date-based fallback
+          if [[ -n "${{ inputs.arizen_version }}" ]]; then
+            VERSION="${{ inputs.arizen_version }}"
+          elif [[ -f config/build_config.sh ]]; then
+            source config/build_config.sh
+            VERSION="${ARIZEN_VERSION:-1.0}"
+          else
+            VERSION="1.0"
+          fi
+
+          BUILD_DATE=$(date +%Y%m%d)
+          SHORT_SHA="${GITHUB_SHA::7}"
+          TAG="v${VERSION}-${BUILD_DATE}-${SHORT_SHA}"
+          OUTPUT_NAME="ArizenOSLite_v${VERSION}_SM-T295_${BUILD_DATE}.tar.md5"
+
+          echo "VERSION=$VERSION"         >> $GITHUB_OUTPUT
+          echo "BUILD_DATE=$BUILD_DATE"   >> $GITHUB_OUTPUT
+          echo "TAG=$TAG"                 >> $GITHUB_OUTPUT
+          echo "OUTPUT_NAME=$OUTPUT_NAME" >> $GITHUB_OUTPUT
+
+          # Resolve GSI URL: workflow input → secret
+          GSI_URL_RESOLVED="${{ inputs.gsi_url }}"
+          if [[ -z "$GSI_URL_RESOLVED" ]]; then
+            GSI_URL_RESOLVED="${{ secrets.GSI_URL }}"
+          fi
+          if [[ -z "$GSI_URL_RESOLVED" ]]; then
+            echo "❌ GSI_URL tidak ditemukan."
+            echo "   Set secret GSI_URL di: Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          echo "GSI_URL=$GSI_URL_RESOLVED" >> $GITHUB_OUTPUT
+          echo "✅ Version : $VERSION"
+          echo "✅ Tag     : $TAG"
+          echo "✅ GSI URL : $GSI_URL_RESOLVED"
+
+      # ── 3. INSTALL BUILD TOOLS ─────────────────────────────────────────────
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            tar unzip file lz4 xz-utils brotli \
+            e2fsprogs pv wget curl openssl
+
+          # simg2img / img2simg
+          sudo apt-get install -y -qq android-tools-fsutils 2>/dev/null || true
+          if ! command -v simg2img &>/dev/null; then
+            sudo apt-get install -y -qq build-essential libz-dev git
+            git clone --depth=1 https://github.com/anestisb/android-simg2img /tmp/simg2img-src
+            make -C /tmp/simg2img-src
+            sudo cp /tmp/simg2img-src/simg2img /tmp/simg2img-src/img2simg /usr/local/bin/
+          fi
+          echo "simg2img: $(simg2img --version 2>&1 | head -1 || echo ok)"
+          echo "img2simg: $(command -v img2simg)"
+
+      # ── 4. BUILD ARIZENLAUNCHER APK ────────────────────────────────────────
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build ArizenLauncher APK
+        run: |
+          echo "━━━ Building ArizenLauncher ━━━"
+          cd arizen-launcher
+          chmod +x gradlew 2>/dev/null || true
+
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --stacktrace \
+            2>&1 | tee /tmp/gradle_build.log
+          EXIT=${PIPESTATUS[0]}
+
+          if [[ $EXIT -ne 0 ]]; then
+            echo ""
+            echo "══ GRADLE ERRORS ══"
+            grep -E "error:|ERROR:|BUILD FAILED|Execution failed|Caused by:" \
+              /tmp/gradle_build.log | tail -30 || true
+            exit $EXIT
+          fi
+
+          APK=$(find . -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
+          [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
+          [[ -z "$APK" ]] && { echo "❌ APK not found"; exit 1; }
+
+          cp "$APK" "../ArizenLauncher.apk"
+          echo "✅ ArizenLauncher.apk: $(du -sh ../ArizenLauncher.apk | cut -f1)"
+
+      # ── 5. DOWNLOAD GSI ────────────────────────────────────────────────────
+      - name: Download GSI
+        run: |
+          mkdir -p firmware
+          GSI_URL="${{ steps.vars.outputs.GSI_URL }}"
+          echo "Downloading GSI from: $GSI_URL"
+
+          # Detect extension to set target filename
+          EXT="${GSI_URL##*.}"
+          case "$EXT" in
+            img)  TARGET="firmware/system.img" ;;
+            xz)   TARGET="firmware/system.img.xz" ;;
+            lz4)  TARGET="firmware/system.img.lz4" ;;
+            zip)  TARGET="firmware/gsi.zip" ;;
+            *)    TARGET="firmware/system.img" ;;
+          esac
+
+          wget -q --show-progress \
+            --tries=3 \
+            --timeout=300 \
+            -O "$TARGET" "$GSI_URL" || \
+          curl -L \
+            --retry 3 \
+            --max-time 300 \
+            -o "$TARGET" "$GSI_URL"
+
+          [[ -s "$TARGET" ]] || { echo "❌ Download failed or empty file"; exit 1; }
+          echo "✅ GSI downloaded: $(basename $TARGET) ($(du -sh $TARGET | cut -f1))"
+
+          # Cache path for unpack_gsi.sh
+          echo "$(pwd)/$TARGET" > firmware/.rom_path
+
+      # ── 6. UNPACK GSI (needs --privileged equivalent: sudo) ───────────────
+      - name: Unpack GSI
+        run: |
+          chmod +x scripts/*.sh
+          sudo bash scripts/unpack_gsi.sh
+
+      # ── 7. INJECT ARIZENOS ─────────────────────────────────────────────────
+      - name: Inject ArizenOS components
+        run: |
+          sudo bash scripts/inject_arizenos.sh
+          echo "✅ Injected: launcher + debloat + branding + ZRAM + perf tweaks"
+
+      # ── 8. REPACK AP ───────────────────────────────────────────────────────
+      - name: Repack AP partition
+        run: sudo bash scripts/repack_ap.sh
+
+      # ── 9. PACKAGE ODIN ────────────────────────────────────────────────────
+      - name: Package Odin flashable (.tar.md5)
+        run: |
+          export ARIZEN_VERSION="${{ steps.vars.outputs.VERSION }}"
+          export OUTPUT_FILENAME="${{ steps.vars.outputs.OUTPUT_NAME }}"
+          bash scripts/package_odin.sh
+
+          OUTPUT=$(find output/ -name "*.tar.md5" | head -1)
+          [[ -z "$OUTPUT" ]] && { echo "❌ Package not found"; exit 1; }
+          echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
+          echo "✅ Packaged: $(basename $OUTPUT) ($(du -sh $OUTPUT | cut -f1))"
+
+      # ── 10. GENERATE MD5 ───────────────────────────────────────────────────
+      - name: Generate MD5 checksum
+        run: |
+          bash scripts/generate_md5.sh 2>/dev/null || \
+            md5sum "$OUTPUT_FILE" > "${OUTPUT_FILE}.md5sum"
+          echo "✅ MD5 generated"
+
+      # ── 11. VALIDATE ODIN FORMAT ───────────────────────────────────────────
+      - name: Validate Odin format
+        run: |
+          FILE="$OUTPUT_FILE"
+          SIZE=$(stat -c%s "$FILE")
+          echo "File: $(basename $FILE)"
+          echo "Size: $(du -sh $FILE | cut -f1)"
+
+          # Check tar magic
+          MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || echo "")
+          echo "Tar magic: $MAGIC"
+
+          # Check MD5 (Samsung format: last 32 bytes)
+          BODY=$(( SIZE - 32 ))
+          STORED=$(tail -c 32 "$FILE")
+          COMPUTED=$(head -c $BODY "$FILE" | md5sum | awk '{print $1}')
+          echo "MD5 stored  : $STORED"
+          echo "MD5 computed: $COMPUTED"
+          [[ "$STORED" == "$COMPUTED" ]] || { echo "❌ MD5 mismatch — Odin will reject"; exit 1; }
+          echo "✅ Odin format valid"
+
+      # ── 12. UPLOAD ARTIFACT ─────────────────────────────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArizenOSLite-v${{ steps.vars.outputs.VERSION }}-SM-T295-${{ steps.vars.outputs.BUILD_DATE }}
+          path: output/*.tar.md5
+          retention-days: 30
+          if-no-files-found: error
+
+      # ── 13. CREATE GITHUB RELEASE ──────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.TAG }}
+          name: "ArizenOS Lite v${{ steps.vars.outputs.VERSION }} — ${{ steps.vars.outputs.BUILD_DATE }}"
+          draft: false
+          prerelease: false
+          files: |
+            output/*.tar.md5
+            output/*.md5sum
+          body: |
+            ## ArizenOS Lite v${{ steps.vars.outputs.VERSION }}
+
+            **Device:** Samsung Galaxy Tab A 8.0 (2019) — SM-T295
+            **Android Base:** ${{ env.ARIZEN_ANDROID }}
+            **Build Date:** ${{ steps.vars.outputs.BUILD_DATE }}
+            **Commit:** ${{ github.sha }}
+
+            ---
+
+            ### Cara Flash (Odin)
+            1. Boot ke Download Mode: `Power + Vol Down` → tekan `Vol Up`
+            2. Buka Odin → **AP** → pilih file `.tar.md5`
+            3. Options: **Auto Reboot ✓** · **F.Reset Time ✓** · Re-Partition ✗
+            4. Klik **Start** → tunggu **PASS!**
+
+            ### Cara Flash (Heimdall — macOS/Linux)
+            ```bash
+            heimdall detect
+            heimdall flash --SYSTEM system_raw.img --no-reboot
+            ```
+
+            ---
+            > Built automatically from commit `${{ github.sha }}` via GitHub Actions CI.
