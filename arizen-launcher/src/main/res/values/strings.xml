@@ -1,18 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Arizen Launcher</string>
-    <string name="arizen_greeting_morning">Selamat pagi. Siap membantu.</string>
-    <string name="arizen_greeting_day">Halo. Ada yang bisa saya bantu?</string>
+    <!-- App name -->
+    <string name="app_name">ArizenOS Lite</string>
+    <string name="settings_title">Arizen Settings</string>
+
+    <!-- Greetings -->
+    <string name="arizen_greeting_morning">Selamat pagi. Arizen siap membantu.</string>
+    <string name="arizen_greeting_day">Selamat siang. Ada yang bisa saya bantu?</string>
     <string name="arizen_greeting_evening">Selamat malam. Apa yang kamu butuhkan?</string>
-    <string name="arizen_hint">Tanya Arizen&#8230;</string>
-    <string name="arizen_thinking">Arizen sedang memproses&#8230;</string>
-    <string name="arizen_no_key">API key belum dikonfigurasi.\nBuka Pengaturan &#8594; AI &#8594; API Key.</string>
+    <string name="arizen_greeting_night">Masih terjaga? Saya di sini untuk membantu.</string>
+    <string name="arizen_subtitle">AI-Native OS by ArizenLabs</string>
+
+    <!-- AI Assistant -->
+    <string name="arizen_no_key">API key belum dikonfigurasi.\n\nBuka Arizen Settings → Arizen AI → masukkan API key Groq (gratis di console.groq.com) atau provider lainnya.\n\nSetelah disimpan, kembali ke sini untuk mulai chat.</string>
+    <string name="hint_ask">Tanya apa saja, atau ketik perintah...</string>
+
+    <!-- Status strings -->
+    <string name="status_saved">Konfigurasi disimpan!</string>
+    <string name="status_ok">Koneksi berhasil — AI siap</string>
+    <string name="status_fail">Gagal: </string>
+    <string name="status_typing">Arizen sedang mengetik…</string>
+    <string name="status_online">Online</string>
+
+    <!-- Labs -->
     <string name="labs_title">ArizenLabs</string>
-    <string name="labs_subtitle">Fitur Eksperimental</string>
-    <string name="settings_title">Pengaturan Arizen</string>
+    <string name="labs_subtitle">AI Ecosystem</string>
+    <string name="boost_running">Meng-boost RAM…</string>
+
+    <!-- Buttons -->
+    <string name="btn_send">Kirim</string>
     <string name="btn_save">Simpan</string>
-    <string name="btn_test">Uji Koneksi</string>
-    <string name="status_saved">&#10003; Tersimpan</string>
-    <string name="status_ok">&#10003; Koneksi berhasil!</string>
-    <string name="status_fail">&#10007; Gagal: </string>
+    <string name="btn_test">Test</string>
+    <string name="btn_back">←</string>
 </resources>
