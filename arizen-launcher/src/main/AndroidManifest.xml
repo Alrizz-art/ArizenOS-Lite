@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.arizen.launcher"
-    android:versionCode="1"
+    android:versionCode="2"
     android:versionName="1.0">
 
     <uses-sdk
@@ -13,11 +13,9 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
     <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!-- READ_EXTERNAL_STORAGE for file search tool -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
     <application
@@ -27,7 +25,7 @@
         android:allowBackup="false"
         android:largeHeap="false">
 
-        <!-- Main Launcher Activity -->
+        <!-- Main Launcher -->
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTask"
@@ -42,17 +40,28 @@
             </intent-filter>
         </activity>
 
-        <!-- AI Assistant -->
+        <!-- Arizen AI Assistant -->
         <activity
             android:name=".ArizenAssistantActivity"
             android:theme="@style/ArizenAssistantTheme"
             android:windowSoftInputMode="adjustResize|stateVisible"
             android:exported="false"/>
 
-        <!-- AI Settings -->
+        <!-- ArizenLabs -->
+        <activity
+            android:name=".ArizenLabsActivity"
+            android:theme="@style/ArizenLabsTheme"
+            android:exported="false"/>
+
+        <!-- Arizen Settings -->
         <activity
             android:name=".ArizenSettingsActivity"
-            android:label="Arizen Settings"
+            android:label="@string/settings_title"
+            android:exported="false"/>
+
+        <!-- Ambient Service -->
+        <service
+            android:name=".ArizenAmbientService"
             android:exported="false"/>
 
         <!-- Boot receiver -->
