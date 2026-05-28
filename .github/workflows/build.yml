@@ -33,87 +33,112 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Java (for Android Gradle build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Python (for samloader)
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install build tools
+      - name: Install Linux build tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
             tar openssl unzip file lz4 \
-            e2fsprogs pv wget curl \
-            android-tools-fsutils 2>/dev/null || true
+            e2fsprogs pv wget curl
 
-          # Build simg2img from source if package not available
+          # simg2img / img2simg
+          sudo apt-get install -y -qq android-tools-fsutils 2>/dev/null || true
           if ! command -v simg2img &>/dev/null || ! command -v img2simg &>/dev/null; then
-            echo "Building simg2img/img2simg from source..."
             sudo apt-get install -y -qq build-essential libz-dev git
             git clone --depth=1 https://github.com/anestisb/android-simg2img /tmp/simg2img-src
             cd /tmp/simg2img-src && make
             sudo cp simg2img img2simg /usr/local/bin/
             cd -
           fi
+          echo "simg2img: $(command -v simg2img)"
+          echo "img2simg: $(command -v img2simg)"
 
-          echo "Tools check:"
-          command -v simg2img && simg2img --version 2>/dev/null || echo "simg2img: OK"
-          command -v img2simg && echo "img2simg: OK"
-          command -v e2fsck && echo "e2fsck: OK"
-          command -v lz4 && echo "lz4: OK"
+      # ── BUILD ARIZEN LAUNCHER APK ──────────────────────────────────────────
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
+      - name: Build ArizenLauncher.apk
+        run: |
+          echo "Building ArizenLauncher from source..."
+          cd arizen-launcher
+
+          # Make Gradle wrapper executable
+          chmod +x gradlew 2>/dev/null || true
+
+          # Use system gradle if no wrapper
+          if [[ ! -f gradlew ]]; then
+            gradle wrapper --gradle-version 7.6
+          fi
+
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            -Pandroid.suppressUnsupportedCompileSdk=28 \
+            2>&1 | tail -50
+
+          # Find the output APK
+          APK=$(find . -name "*.apk" -path "*/release/*" 2>/dev/null | head -1)
+          [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
+          [[ -z "$APK" ]] && { echo "APK not found after build!"; exit 1; }
+
+          # Copy to repo root as ArizenLauncher.apk
+          cp "$APK" "../ArizenLauncher.apk"
+          echo "APK built: $(basename $APK) ($(du -sh $APK | cut -f1))"
+          cd ..
+
+      # ── DOWNLOAD FIRMWARE ────────────────────────────────────────────────
       - name: Download firmware via samloader
         run: |
           pip install samloader --quiet
           mkdir -p firmware
 
-          echo "Fetching firmware for $DEVICE_MODEL / ${{ inputs.device_region }}..."
-
-          # samloader download — try both CLI styles for compatibility
           samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -O firmware --auto-download 2>/dev/null \
           || samloader --model $DEVICE_MODEL --region ${{ inputs.device_region }} download --output firmware 2>/dev/null \
-          || { echo "samloader failed — check if firmware exists for region ${{ inputs.device_region }}"; exit 1; }
+          || { echo "samloader failed for region ${{ inputs.device_region }}"; exit 1; }
 
-          ls -lh firmware/
           FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
-          [[ -z "$FW_ZIP" ]] && { echo "Firmware zip not found after download"; exit 1; }
-          echo "Firmware downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
+          [[ -z "$FW_ZIP" ]] && { echo "Firmware zip not found"; exit 1; }
           echo "FW_ZIP=$FW_ZIP" >> $GITHUB_ENV
+          echo "Downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
 
+      # ── BUILD FIRMWARE ───────────────────────────────────────────────────
       - name: Extract firmware
         run: |
           chmod +x scripts/*.sh
-          ./scripts/extract_firmware.sh "$FW_ZIP"
-          echo "Extracted contents:"
+          bash scripts/extract_firmware.sh "$FW_ZIP"
           ls -lh work/
 
       - name: Unpack AP partition
-        run: |
-          # Run with sudo — required for loop mount
-          sudo bash scripts/unpack_ap.sh
-          echo "Partition images found:"
-          ls -lh work/ap_extracted/ 2>/dev/null || true
+        run: sudo bash scripts/unpack_ap.sh
 
-      - name: Inject ArizenOS components
-        run: |
-          sudo bash scripts/inject_arizenos.sh
+      - name: Inject ArizenOS
+        run: sudo bash scripts/inject_arizenos.sh
 
       - name: Repack AP
-        run: |
-          sudo bash scripts/repack_ap.sh
+        run: sudo bash scripts/repack_ap.sh
 
       - name: Package Odin flashable
         run: |
           export ARIZEN_VERSION="${{ inputs.arizen_version }}"
           bash scripts/package_odin.sh
           OUTPUT=$(find output/ -name "*.tar.md5" | head -1)
-          [[ -z "$OUTPUT" ]] && { echo "Package not found in output/"; exit 1; }
+          [[ -z "$OUTPUT" ]] && { echo "Package not found"; exit 1; }
           echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
-          echo "Build complete: $(basename $OUTPUT) ($(du -sh $OUTPUT | cut -f1))"
 
-      - name: Upload artifact (always)
+      # ── RELEASE ──────────────────────────────────────────────────────────
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ArizenOS-Lite-v${{ inputs.arizen_version }}-SM-T295-${{ inputs.device_region }}
@@ -130,7 +155,7 @@ jobs:
           body: |
             ## ArizenOS Lite v${{ inputs.arizen_version }}
 
-            > Stock Samsung firmware — modified, debloated, optimized
+            > Stock Samsung firmware — modified, debloated, Arizen Launcher as default home
 
             | | |
             |--|--|
@@ -141,31 +166,30 @@ jobs:
             | **Build** | #${{ github.run_number }} |
 
             ### Whats changed
-            - Samsung bloatware removed (~25 packages debloated)
-            - ZRAM 512MB enabled via `/system/etc/init/arizen_zram.rc`
-            - build.prop: performance heap tuning for 2GB RAM
-            - ArizenOS branding (`ro.arizen.*` props)
-            - Arizen Launcher (if APK was present in repo)
-            - Arizen AI Core (if APK was present in repo)
+            - **Arizen Launcher** — installed in priv-app, set as **default HOME launcher**
+            - Samsung launcher replaced by Arizen Launcher
+            - Samsung bloatware removed (~25 packages)
+            - ZRAM 512MB enabled (`/system/etc/init/arizen_zram.rc`)
+            - build.prop performance tweaks (heap, LMK, rendering)
+            - ArizenOS branding throughout system
 
             ### Flash via Odin (Windows)
             1. Download `${{ env.OUTPUT_NAME }}` below
-            2. Boot SM-T295 to **Download Mode**: hold `Power + Vol Down + Bixby`, then press `Vol Up`
-            3. Open Odin v3.14 → click **AP** → select the `.tar.md5` file
+            2. Boot SM-T295: hold `Power + Vol Down + Bixby` → press `Vol Up`
+            3. Open Odin → **AP** → select the `.tar.md5` file
             4. Options: **Auto Reboot ON** | **F.Reset Time ON** | **Re-Partition OFF**
             5. Click **Start** — wait for green **PASS!**
-            6. Device reboots into ArizenOS Lite
 
             ### Flash via Heimdall (macOS/Linux)
             ```bash
             heimdall flash --SYSTEM output/${{ env.OUTPUT_NAME }}
             ```
 
-            ### Recovery (if bootloop)
-            Download original SM-T295 firmware from [samfw.com](https://samfw.com) and re-flash AP.
+            ### Recovery (bootloop)
+            Flash original SM-T295 firmware from [samfw.com](https://samfw.com)
 
             ---
-            *Built by GitHub Actions — ArizenOS by @Alrizz-art*
+            *ArizenOS by @Alrizz-art — Built by GitHub Actions*
           files: output/*.tar.md5
           make_latest: true
         env:
@@ -175,11 +199,9 @@ jobs:
         if: always()
         run: |
           {
-            echo "## ArizenOS Lite Build Result"
-            echo ""
+            echo "## ArizenOS Lite Build"
             if [[ -n "${OUTPUT_NAME:-}" ]]; then
-              echo "**Status: SUCCESS**"
-              echo ""
+              echo "**SUCCESS**"
               echo "| Field | Value |"
               echo "|-------|-------|"
               echo "| File | \`$OUTPUT_NAME\` |"
@@ -187,8 +209,8 @@ jobs:
               echo "| Region | ${{ inputs.device_region }} |"
               echo "| Build | #${{ github.run_number }} |"
               echo ""
-              echo "Download from the **Releases** tab or **Artifacts** section above."
+              echo "Download from **Releases** tab above."
             else
-              echo "**Status: FAILED** — check logs above for errors"
+              echo "**FAILED** — check logs above"
             fi
           } >> $GITHUB_STEP_SUMMARY
