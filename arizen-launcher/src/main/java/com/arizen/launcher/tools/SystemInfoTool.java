@@ -49,7 +49,7 @@ public class SystemInfoTool implements ArizenTool {
             "Storage   : %dMB free / %dMB total\n" +
             "CPU ABI   : %s\n" +
             "────────────────────────\n",
-            android.os.SystemProperties.get("ro.arizen.version", "1.0"),
+            "1.0",
             Build.VERSION.RELEASE, Build.VERSION.SDK_INT,
             usedMB, totalMB, availMB,
             mi.lowMemory ? "YES (critical!)" : "No",
