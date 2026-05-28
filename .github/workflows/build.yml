@@ -63,15 +63,13 @@ jobs:
           echo "simg2img: $(command -v simg2img)"
           echo "img2simg: $(command -v img2simg)"
 
-      # ── BUILD ARIZEN LAUNCHER APK (optional — pipeline continues if fails) ──
+      # ── STEP 1: BUILD ARIZEN LAUNCHER — wajib berhasil sebelum firmware ──
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build ArizenLauncher.apk
-        continue-on-error: true
-        id: build_apk
+      - name: Build ArizenLauncher (di-embed ke firmware sebagai launcher utama)
         run: |
-          echo "Building ArizenLauncher from source..."
+          echo "Building ArizenLauncher — akan di-inject ke system/priv-app sebagai launcher utama..."
           cd arizen-launcher
 
           chmod +x gradlew 2>/dev/null || true
@@ -86,24 +84,13 @@ jobs:
 
           APK=$(find . -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
-          if [[ -z "$APK" ]]; then
-            echo "APK not found — launcher will be skipped in firmware injection"
-            exit 1
-          fi
+          [[ -z "$APK" ]] && { echo "❌ APK build gagal — firmware tidak akan dibuat tanpa launcher"; exit 1; }
 
           cp "$APK" "../ArizenLauncher.apk"
-          echo "APK built: $(basename $APK) ($(du -sh $APK | cut -f1))"
+          echo "✅ ArizenLauncher siap untuk di-embed: $(basename $APK) ($(du -sh $APK | cut -f1))"
           cd ..
 
-      - name: APK build status
-        run: |
-          if [[ -f "ArizenLauncher.apk" ]]; then
-            echo "✅ ArizenLauncher.apk ready ($(du -sh ArizenLauncher.apk | cut -f1))"
-          else
-            echo "⚠️  ArizenLauncher.apk not built — firmware will be built WITHOUT launcher injection"
-          fi
-
-      # ── DOWNLOAD FIRMWARE ────────────────────────────────────────────────
+      # ── STEP 2: DOWNLOAD FIRMWARE SAMSUNG ────────────────────────────────
       - name: Download firmware via samloader
         run: |
           pip install samloader --quiet
@@ -118,7 +105,7 @@ jobs:
           echo "FW_ZIP=$FW_ZIP" >> $GITHUB_ENV
           echo "Downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
 
-      # ── BUILD AP tar.md5 ─────────────────────────────────────────────────
+      # ── STEP 3: INJECT ARIZEN KE FIRMWARE → OUTPUT: AP tar.md5 ──────────
       - name: Extract firmware
         run: |
           chmod +x scripts/*.sh
@@ -128,8 +115,11 @@ jobs:
       - name: Unpack AP partition
         run: sudo bash scripts/unpack_ap.sh
 
-      - name: Inject ArizenOS
-        run: sudo bash scripts/inject_arizenos.sh
+      - name: Inject ArizenOS (launcher + debloat + branding + ZRAM)
+        run: |
+          sudo bash scripts/inject_arizenos.sh
+          echo "✅ ArizenLauncher.apk di-inject ke system/priv-app sebagai launcher utama"
+          echo "   Samsung launcher dihapus — Arizen Launcher aktif otomatis setelah flash"
 
       - name: Repack AP
         run: sudo bash scripts/repack_ap.sh
@@ -144,7 +134,7 @@ jobs:
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
 
-      # ── ODIN VALIDATION ───────────────────────────────────────────────────
+      # ── STEP 4: VALIDASI ODIN ────────────────────────────────────────────
       - name: Odin format validation
         run: |
           set -euo pipefail
@@ -237,7 +227,6 @@ jobs:
 
           echo ""
           echo "[ CHECK 7 ] ArizenOS branding in system.img..."
-          BODY_BYTES=$(( SIZE_BYTES - 32 ))
           TMPDIR_CHECK=$(mktemp -d)
           head -c $BODY_BYTES "$FILE" | tar -C "$TMPDIR_CHECK" -x system.img 2>/dev/null || true
           if [[ -f "$TMPDIR_CHECK/system.img" ]]; then
@@ -275,7 +264,7 @@ jobs:
             echo "ODIN_VALID=true" >> $GITHUB_ENV
           fi
 
-      # ── RELEASE ──────────────────────────────────────────────────────────
+      # ── STEP 5: UPLOAD & RELEASE ─────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -293,7 +282,7 @@ jobs:
           body: |
             ## ArizenOS Lite v${{ inputs.arizen_version }}
 
-            > Stock Samsung firmware — modified, debloated, Arizen Launcher as default home
+            > Stock Samsung firmware — dimodifikasi, debloat, Arizen Launcher sebagai launcher utama bawaan
 
             | | |
             |--|--|
@@ -304,21 +293,21 @@ jobs:
             | **Build** | #${{ github.run_number }} |
             | **Odin Validated** | ✅ Passed all 7 checks |
 
-            ### What's included
-            - **Arizen Launcher** — installed in `priv-app`, set as **default HOME launcher**
-            - Samsung launcher (TouchWizHome/SecLauncher) removed
-            - **84 Samsung bloatware packages** removed (Bixby, Facebook, Knox, etc.)
-            - ZRAM 512MB with lz4 compression (`/system/etc/init/arizen_zram.rc`)
-            - VM sysctl tuning: swappiness=60, cache_pressure=150, extra_free_kbytes=24300
-            - Dalvik heap tuned for 2GB: growthLimit=128MB, LMK aggressive
-            - build.prop: ArizenOS branding + full performance tweaks
+            ### Yang sudah ada di dalam firmware ini
+            - **Arizen Launcher** — tertanam di `system/priv-app`, **langsung aktif sebagai launcher utama** setelah flash (tidak perlu install manual)
+            - Samsung launcher (TouchWizHome/SecLauncher) dihapus permanen
+            - **84 Samsung bloatware** dihapus (Bixby, Facebook, Knox, dll)
+            - ZRAM 512MB lz4 (`/system/etc/init/arizen_zram.rc`)
+            - VM sysctl: swappiness=60, cache_pressure=150, extra_free_kbytes=24300
+            - Dalvik heap dioptimalkan untuk 2GB RAM
+            - build.prop: branding ArizenOS penuh
 
             ### Flash via Odin (Windows)
-            1. Download `${{ env.OUTPUT_NAME }}` below
-            2. Boot SM-T295: hold `Power + Vol Down + Bixby` → press `Vol Up`
-            3. Open Odin v3.14.4+ → click **AP** → select the `.tar.md5` file
+            1. Download `${{ env.OUTPUT_NAME }}` di bawah
+            2. Boot SM-T295 ke Download Mode: `Power + Vol Down + Bixby` → tekan `Vol Up`
+            3. Buka Odin v3.14.4+ → klik **AP** → pilih file `.tar.md5`
             4. Options: **Auto Reboot ✓** | **F.Reset Time ✓** | **Re-Partition ✗**
-            5. Click **Start** — wait for green **PASS!**
+            5. Klik **Start** — tunggu PASS! berwarna hijau
 
             ### Flash via Heimdall (macOS/Linux)
             ```bash
@@ -326,7 +315,7 @@ jobs:
             ```
 
             ### Recovery (bootloop / soft-brick)
-            Flash original SM-T295 firmware from [samfw.com](https://samfw.com)
+            Flash firmware original SM-T295 dari [samfw.com](https://samfw.com)
 
             ---
             *ArizenOS by @Alrizz-art — Built & validated by GitHub Actions #${{ github.run_number }}*
@@ -348,13 +337,13 @@ jobs:
               echo "| File | \`${OUTPUT_NAME:-unknown}\` |"
               echo "| Size | ${FILE_SIZE:-unknown} |"
               echo "| Region | ${{ inputs.device_region }} |"
+              echo "| Launcher | ✅ Tertanam di system/priv-app (default HOME) |"
               echo "| Odin Validation | ✅ 7/7 checks passed |"
-              echo "| APK Build | ${{ steps.build_apk.outcome }} |"
               echo ""
-              echo "Download from the **Releases** tab."
+              echo "Download dari tab **Releases**."
             else
               echo "### ❌ Build Failed"
-              echo "Check the logs above for details."
+              echo "Cek logs di atas untuk detail."
               echo ""
               echo "| Field | Value |"
               echo "|-------|-------|"
