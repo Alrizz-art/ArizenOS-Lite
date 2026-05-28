@@ -1,57 +1,46 @@
 #!/usr/bin/env bash
-# ArizenOS Lite — inject_arizenos.sh (v7)
-# Full brand takeover: strip Samsung, inject ArizenOS Lite
+# ArizenOS Lite — inject_arizenos.sh (v8 — LineageOS base)
+# Injects ArizenOS identity, launcher, and system tuning into LineageOS system
+# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 WORK_DIR="$(pwd)/work"
 SYSTEM_MNT="${SYSTEM_MNT:-$(cat $WORK_DIR/.mount_path 2>/dev/null || echo $WORK_DIR/system_mount)}"
 CONFIG_DIR="$(pwd)/config"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BASE_TYPE=$(cat "$WORK_DIR/.base_type" 2>/dev/null || echo "lineageos")
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BLUE='\033[0;34m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m'; BLUE='\033[0;34m'; NC='\033[0m'
 log()     { echo -e "${CYAN}[ArizenOS]${NC} $*"; }
 ok()      { echo -e "${GREEN}[✓]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 fail()    { echo -e "${RED}[✗]${NC} $*"; exit 1; }
-section() { echo -e "\n${BLUE}══════════════════════════════════════${NC}"; echo -e "${BLUE} $*${NC}"; echo -e "${BLUE}══════════════════════════════════════${NC}"; }
+section() { echo -e "\n${BLUE}══════════════════════════════════════${NC}"; \
+            echo -e "${BLUE} $*${NC}"; \
+            echo -e "${BLUE}══════════════════════════════════════${NC}"; }
 
 [[ -d "$SYSTEM_MNT/app" || -d "$SYSTEM_MNT/priv-app" ]] || \
-    fail "System not mounted at $SYSTEM_MNT. Run unpack_ap.sh first."
+    fail "System not mounted at $SYSTEM_MNT. Run unpack_lineage.sh first."
 
-log "ArizenOS Lite — System Injector v7"
+log "ArizenOS Lite — System Injector v8 (LineageOS base)"
 log "System: $SYSTEM_MNT"
+log "Base  : $BASE_TYPE"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[1/12] Samsung App Debloat"
+section "[1/10] Remove stock launchers (LineageOS default home)"
 # ─────────────────────────────────────────────────────────────────────────────
-REMOVED=0
-if [[ -f "$CONFIG_DIR/debloat_list.txt" ]]; then
-    while IFS= read -r pkg; do
-        [[ -z "$pkg" || "$pkg" == \#* ]] && continue
-        for dir in app priv-app; do
-            if [[ -d "$SYSTEM_MNT/$dir/$pkg" ]]; then
-                rm -rf "$SYSTEM_MNT/$dir/$pkg"
-                log "  ✓ $pkg"
-                ((REMOVED++))
-                break
-            fi
-        done
-    done < "$CONFIG_DIR/debloat_list.txt"
-    ok "Debloat: $REMOVED packages removed"
-else
-    warn "debloat_list.txt not found — skipping"
-fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-section "[2/12] Remove Samsung Launchers"
-# ─────────────────────────────────────────────────────────────────────────────
-SAMSUNG_LAUNCHERS=(
-    "NexusLauncher" "SecLauncher2" "SecLauncher3"
-    "TouchWizHome" "Launcher3" "Launcher2"
-    "OneUIHome" "SamsungLauncher"
+# LineageOS ships with Trebuchet or Launcher3 — remove to force Arizen
+STOCK_LAUNCHERS=(
+    "Trebuchet"       # LineageOS default
+    "Launcher3"       # AOSP fallback
+    "Launcher3QuickStep"
+    "NexusLauncher"
+    "PixelLauncher"
+    "QuickStep"
 )
 LAUNCHER_REMOVED=0
-for launcher in "${SAMSUNG_LAUNCHERS[@]}"; do
+for launcher in "${STOCK_LAUNCHERS[@]}"; do
     for dir in priv-app app; do
         if [[ -d "$SYSTEM_MNT/$dir/$launcher" ]]; then
             rm -rf "$SYSTEM_MNT/$dir/$launcher"
@@ -61,55 +50,18 @@ for launcher in "${SAMSUNG_LAUNCHERS[@]}"; do
         fi
     done
 done
-ok "Samsung launchers removed: $LAUNCHER_REMOVED"
 
-# ─────────────────────────────────────────────────────────────────────────────
-section "[3/12] Strip Samsung Boot Media"
-# ─────────────────────────────────────────────────────────────────────────────
-STOCK_BOOTANIM="$SYSTEM_MNT/media/bootanimation.zip"
-[[ -f "$STOCK_BOOTANIM" ]] && { rm -f "$STOCK_BOOTANIM"; log "  ✓ Removed Samsung bootanimation.zip"; }
-
-for sound_path in \
-    "$SYSTEM_MNT/media/audio/ui/boot_seq.ogg" \
-    "$SYSTEM_MNT/media/audio/ui/PowerOn.ogg" \
-    "$SYSTEM_MNT/media/audio/ui/shutdown.ogg" \
-    "$SYSTEM_MNT/media/audio/ui/PowerOff.ogg"; do
-    [[ -f "$sound_path" ]] && { rm -f "$sound_path"; log "  ✓ Removed: $(basename $sound_path)"; }
+# Also remove as individual APKs
+for f in \
+    "$SYSTEM_MNT/priv-app/Trebuchet/Trebuchet.apk" \
+    "$SYSTEM_MNT/app/Launcher3/Launcher3.apk"; do
+    [[ -f "$f" ]] && { rm -f "$f"; log "  ✓ Removed APK: $(basename $f)"; ((LAUNCHER_REMOVED++)); }
 done
 
-for ringtone in \
-    "$SYSTEM_MNT/media/audio/ringtones/Over_the_Horizon.ogg" \
-    "$SYSTEM_MNT/media/audio/ringtones/Spaceline.ogg" \
-    "$SYSTEM_MNT/media/audio/ringtones/My_Galaxy.ogg"; do
-    [[ -f "$ringtone" ]] && { rm -f "$ringtone"; log "  ✓ Removed Samsung ringtone: $(basename $ringtone)"; }
-done
-ok "Samsung boot media stripped"
+ok "Stock launchers removed: $LAUNCHER_REMOVED"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[4/12] Remove Samsung UI Overlays"
-# ─────────────────────────────────────────────────────────────────────────────
-SAMSUNG_OVERLAYS=(
-    "SamsungTheme" "SecThemeService" "ThemeService"
-    "SamsungOneUITheme" "SamsungIconPackQXXX" "SecProductFeature"
-)
-OVL_REMOVED=0
-for pkg in "${SAMSUNG_OVERLAYS[@]}"; do
-    for dir in overlay app priv-app; do
-        if [[ -d "$SYSTEM_MNT/$dir/$pkg" ]]; then
-            rm -rf "$SYSTEM_MNT/$dir/$pkg"
-            log "  ✓ Removed overlay: $pkg"
-            ((OVL_REMOVED++))
-            break
-        fi
-    done
-done
-for f in "$SYSTEM_MNT/fonts/SamsungSans"* "$SYSTEM_MNT/fonts/SamsungIF"*; do
-    [[ -f "$f" ]] && { rm -f "$f"; log "  ✓ Removed Samsung font: $(basename $f)"; }
-done
-ok "Samsung overlays removed: $OVL_REMOVED"
-
-# ─────────────────────────────────────────────────────────────────────────────
-section "[5/12] Install Arizen Launcher (default HOME)"
+section "[2/10] Install Arizen Launcher as default HOME"
 # ─────────────────────────────────────────────────────────────────────────────
 LAUNCHER_APK=$(find "$REPO_ROOT" -name "ArizenLauncher.apk" 2>/dev/null | head -1)
 if [[ -n "$LAUNCHER_APK" ]]; then
@@ -132,13 +84,38 @@ if [[ -n "$LAUNCHER_APK" ]]; then
 </preferred-activities>
 EOF
     chmod 644 "$SYSTEM_MNT/etc/preferred-apps/arizen_launcher.xml"
-    ok "Arizen Launcher installed + set as default HOME"
+    ok "Arizen Launcher installed as default HOME"
 else
-    warn "ArizenLauncher.apk not found — built by CI automatically"
+    warn "ArizenLauncher.apk not found — will be built by CI/Gradle"
+    warn "Run: cd arizen-launcher && ./gradlew assembleRelease"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[6/12] Install ArizenOS Boot Animation"
+section "[3/10] LineageOS residual cleanup"
+# ─────────────────────────────────────────────────────────────────────────────
+# Remove LineageOS-specific apps that conflict with Arizen experience
+LINEAGE_REMOVE=(
+    "LineageParts"           # LineageOS Settings extension (we have ArizenSettings)
+    "AudioFX"                # LineageOS equalizer (nice but heavy)
+    "Eleven"                 # LineageOS Music (user can install own)
+    "Jelly"                  # LineageOS Browser (lightweight but replaceable)
+    "Recorder"               # Optional screen recorder
+)
+LOS_REMOVED=0
+for pkg in "${LINEAGE_REMOVE[@]}"; do
+    for dir in priv-app app; do
+        if [[ -d "$SYSTEM_MNT/$dir/$pkg" ]]; then
+            rm -rf "$SYSTEM_MNT/$dir/$pkg"
+            log "  ✓ $pkg"
+            ((LOS_REMOVED++))
+            break
+        fi
+    done
+done
+ok "LineageOS extras removed: $LOS_REMOVED"
+
+# ─────────────────────────────────────────────────────────────────────────────
+section "[4/10] Install ArizenOS boot animation"
 # ─────────────────────────────────────────────────────────────────────────────
 BOOTANIM=$(find "$REPO_ROOT" -name "bootanimation.zip" -path "*/bootanimation/*" 2>/dev/null | head -1)
 if [[ -n "$BOOTANIM" ]]; then
@@ -147,25 +124,25 @@ if [[ -n "$BOOTANIM" ]]; then
     chmod 644 "$SYSTEM_MNT/media/bootanimation.zip"
     ok "ArizenOS boot animation installed ($(du -sh $BOOTANIM | cut -f1))"
 else
-    warn "bootanimation.zip not found in bootanimation/ folder"
+    warn "bootanimation.zip not found in bootanimation/ — using LineageOS default"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[7/12] Install ArizenOS Wallpaper"
+section "[5/10] ArizenOS wallpaper"
 # ─────────────────────────────────────────────────────────────────────────────
-WALLPAPER=$(find "$REPO_ROOT" -name "arizen_wallpaper.png" -o -name "arizen_wallpaper.jpg" 2>/dev/null | head -1)
+WALLPAPER=$(find "$REPO_ROOT" \( -name "arizen_wallpaper.png" -o -name "arizen_wallpaper.jpg" \) 2>/dev/null | head -1)
 if [[ -n "$WALLPAPER" ]]; then
-    mkdir -p "$SYSTEM_MNT/etc/arizen"
     EXT="${WALLPAPER##*.}"
+    mkdir -p "$SYSTEM_MNT/etc/arizen"
     cp "$WALLPAPER" "$SYSTEM_MNT/etc/arizen/wallpaper.$EXT"
-    ok "ArizenOS wallpaper installed"
+    ok "Wallpaper installed"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[8/12] build.prop — Full ArizenOS Branding + Performance"
+section "[6/10] build.prop — ArizenOS identity over LineageOS"
 # ─────────────────────────────────────────────────────────────────────────────
 BUILD_PROP="$SYSTEM_MNT/build.prop"
-[[ ! -f "$BUILD_PROP" ]] && fail "build.prop not found"
+[[ ! -f "$BUILD_PROP" ]] && fail "build.prop not found at $BUILD_PROP"
 
 patch_prop() {
     local key="$1" val="$2"
@@ -176,39 +153,36 @@ patch_prop() {
     fi
 }
 
-# ── Branding ────────────────────────────────────────────────────────────────
+# ── ArizenOS branding over LineageOS ─────────────────────────────────────────
 patch_prop "ro.build.display.id"           "ArizenOS-Lite/1.1/SM-T295"
 patch_prop "ro.product.brand"              "ArizenOS"
 patch_prop "ro.product.manufacturer"       "ArizenLabs"
 patch_prop "ro.product.name"               "arizen_t295"
 patch_prop "ro.product.device"             "SM-T295"
 patch_prop "ro.product.model"              "ArizenOS Lite Edition"
-patch_prop "ro.build.flavor"               "arizen_t295-user"
+patch_prop "ro.build.flavor"               "arizen_t295-userdebug"
 patch_prop "ro.build.user"                 "arizen-builder"
-patch_prop "ro.build.host"                 "ArizenOS-Builder"
+patch_prop "ro.build.host"                 "ArizenOS-CI"
 patch_prop "ro.build.tags"                 "release-keys"
-patch_prop "ro.build.type"                 "user"
+
+# ── ArizenOS custom properties ────────────────────────────────────────────────
 patch_prop "ro.arizen.version"             "1.1"
 patch_prop "ro.arizen.variant"             "Lite"
+patch_prop "ro.arizen.base"                "LineageOS"
+patch_prop "ro.arizen.codename"            "Zenith"
 patch_prop "ro.arizen.build.date"          "$(date +%Y%m%d)"
 patch_prop "ro.arizen.build.number"        "$(date +%Y%m%d)-001"
 patch_prop "ro.arizen.labs.enabled"        "true"
 patch_prop "ro.arizen.ai.enabled"          "true"
-patch_prop "ro.arizen.codename"            "Zenith"
 patch_prop "ro.arizen.features.cmd_palette" "true"
 patch_prop "ro.arizen.features.workspace"  "true"
 patch_prop "ro.arizen.features.monitor"    "true"
 
-# ── Remove Samsung branding identifiers ────────────────────────────────────
-for key in "ro.product.samsung.model" "ro.product.samsung.brand" \
-           "ro.buildtype.samsung" "ro.config.samsung" \
-           "ro.oem.key1" "ro.oem.key2"; do
-    sed -i "/^$key=/d" "$BUILD_PROP" 2>/dev/null || true
-done
-sed -i '/SamsungSans\|SamsungIF/d' "$BUILD_PROP" 2>/dev/null || true
-patch_prop "persist.sys.default_font"      "Roboto"
+# ── Keep LineageOS's ro.lineage.* intact for compatibility ────────────────────
+# (LineageOS apps check for these — we don't remove them)
+log "  LineageOS compatibility props preserved"
 
-# ── Dalvik/ART — tuned 2GB RAM ────────────────────────────────────────────
+# ── Dalvik/ART — 2GB RAM optimized (override LineageOS defaults) ──────────────
 patch_prop "dalvik.vm.heapstartsize"           "8m"
 patch_prop "dalvik.vm.heapgrowthlimit"         "128m"
 patch_prop "dalvik.vm.heapsize"                "256m"
@@ -216,35 +190,34 @@ patch_prop "dalvik.vm.heaptargetutilization"   "0.75"
 patch_prop "dalvik.vm.heapminfree"             "2m"
 patch_prop "dalvik.vm.heapmaxfree"             "8m"
 
-# ── Background process limits ─────────────────────────────────────────────
+# ── Background limits ────────────────────────────────────────────────────────
 patch_prop "ro.config.max_starting_bg"         "2"
 patch_prop "ro.sys.fw.bg_apps_limit"           "8"
 patch_prop "ro.sys.fw.use_trim_settings"       "true"
-patch_prop "persist.sys.fw.trim_enable_memory" "1024"
 patch_prop "persist.sys.purgeable_assets"      "1"
 
-# ── LMK ──────────────────────────────────────────────────────────────────
+# ── LMK ──────────────────────────────────────────────────────────────────────
 patch_prop "ro.lmk.kill_heaviest_task"         "true"
 patch_prop "ro.lmk.kill_timeout_ms"            "100"
 patch_prop "ro.lmk.use_minfree_levels"         "true"
-patch_prop "ro.lmk.low"                        "1001"
-patch_prop "ro.lmk.medium"                     "800"
-patch_prop "ro.lmk.critical"                   "0"
 
-# ── Performance tweaks ────────────────────────────────────────────────────
+# ── Rendering + UX ────────────────────────────────────────────────────────────
 patch_prop "ro.config.animation_scale"         "0.5"
-patch_prop "ro.config.low_ram"                 "false"
 patch_prop "persist.sys.dalvik.multithread"    "true"
-patch_prop "ro.surface_flinger.max_frame_buffer_acquired_buffers" "3"
 patch_prop "debug.sf.reuse_framebuffers"       "1"
 patch_prop "ro.config.hw_quickpoweron"         "true"
-patch_prop "ro.adb.secure"                     "0"
+patch_prop "ro.surface_flinger.max_frame_buffer_acquired_buffers" "3"
+patch_prop "persist.sys.default_font"          "Roboto"
+
+# ── Remove LineageOS branding lines ──────────────────────────────────────────
+sed -i '/^ro.lineage.display.version=/d'   "$BUILD_PROP" 2>/dev/null || true
+sed -i '/^ro.modversion=/d'                "$BUILD_PROP" 2>/dev/null || true
 
 ARIZEN_COUNT=$(grep -c "^ro.arizen" "$BUILD_PROP" 2>/dev/null || echo "0")
 ok "build.prop — $ARIZEN_COUNT ArizenOS properties set"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[9/12] ZRAM + VM sysctl init.rc"
+section "[7/10] ZRAM + VM tuning (init.rc)"
 # ─────────────────────────────────────────────────────────────────────────────
 mkdir -p "$SYSTEM_MNT/etc/init"
 cat > "$SYSTEM_MNT/etc/init/arizen_zram.rc" << 'EOF'
@@ -263,23 +236,23 @@ on post-fs-data
     write /proc/sys/vm/page-cluster 0
 EOF
 chmod 644 "$SYSTEM_MNT/etc/init/arizen_zram.rc"
+ok "ZRAM init.rc installed"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[10/12] LMK + Performance profiles init.rc"
+section "[8/10] CPU + LMK performance init.rc"
 # ─────────────────────────────────────────────────────────────────────────────
 cat > "$SYSTEM_MNT/etc/init/arizen_perf.rc" << 'EOF'
-# ArizenOS Lite — Performance + LMK tuning (SM-T295)
+# ArizenOS Lite — CPU + LMK tuning (SM-T295, Snapdragon 429)
 on boot
-    # LMK minfree: 18/24/32/40/64/96 MB (pages)
-    write /sys/module/lowmemorykiller/parameters/minfree 4608,6144,8192,10240,16384,24576
-    write /sys/module/lowmemorykiller/parameters/adj 0,1,2,3,4,9
-    write /proc/sys/vm/extra_free_kbytes 24576
-
-    # CPU: schedutil (balanced default)
+    # CPU governor: schedutil (balanced default)
     write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor schedutil
     write /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor schedutil
     write /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor schedutil
     write /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor schedutil
+
+    # LMK — 2GB profile (minfree in pages: 18/24/32/40/64/96 MB)
+    write /sys/module/lowmemorykiller/parameters/minfree 4608,6144,8192,10240,16384,24576
+    write /sys/module/lowmemorykiller/parameters/adj 0,1,2,3,4,9
 
     # ArizenOS status
     setprop ro.arizen.status ready
@@ -287,16 +260,22 @@ on boot
     setprop ro.arizen.perf.profile balanced
 EOF
 chmod 644 "$SYSTEM_MNT/etc/init/arizen_perf.rc"
+ok "CPU + LMK init.rc installed"
 
-# Install performance profile script
-mkdir -p "$SYSTEM_MNT/etc/arizen"
+# ─────────────────────────────────────────────────────────────────────────────
+section "[9/10] ArizenOS system assets"
+# ─────────────────────────────────────────────────────────────────────────────
+ARIZEN_DIR="$SYSTEM_MNT/etc/arizen"
+mkdir -p "$ARIZEN_DIR"
+
+# Performance profiles script
 if [[ -f "$CONFIG_DIR/performance_profiles.sh" ]]; then
-    cp "$CONFIG_DIR/performance_profiles.sh" "$SYSTEM_MNT/etc/arizen/performance_profiles.sh"
-    chmod 755 "$SYSTEM_MNT/etc/arizen/performance_profiles.sh"
+    cp "$CONFIG_DIR/performance_profiles.sh" "$ARIZEN_DIR/performance_profiles.sh"
+    chmod 755 "$ARIZEN_DIR/performance_profiles.sh"
     ok "Performance profiles script installed"
 fi
 
-# Install sysctl config
+# sysctl config
 if [[ -f "$CONFIG_DIR/sysctl_arizen.conf" ]]; then
     mkdir -p "$SYSTEM_MNT/etc/sysctl.d"
     cp "$CONFIG_DIR/sysctl_arizen.conf" "$SYSTEM_MNT/etc/sysctl.d/99-arizen.conf"
@@ -304,54 +283,46 @@ if [[ -f "$CONFIG_DIR/sysctl_arizen.conf" ]]; then
     ok "sysctl config installed"
 fi
 
-ok "LMK + Performance init.rc installed"
-
-# ─────────────────────────────────────────────────────────────────────────────
-section "[11/12] ArizenOS file system structure"
-# ─────────────────────────────────────────────────────────────────────────────
-ARIZEN_DIR="$SYSTEM_MNT/etc/arizen"
-mkdir -p "$ARIZEN_DIR"
-
-# ArizenOS version manifest
+# Version manifest
 cat > "$ARIZEN_DIR/version.json" << EOF
 {
   "name": "ArizenOS Lite",
   "version": "1.1",
   "codename": "Zenith",
   "device": "SM-T295",
+  "base": "LineageOS",
   "build_date": "$(date +%Y-%m-%d)",
   "features": {
     "ai_assistant": true,
     "command_palette": true,
     "system_monitor": true,
     "workspace_mode": true,
-    "zram": true,
-    "debloat": true
+    "zram": true
   }
 }
 EOF
 chmod 644 "$ARIZEN_DIR/version.json"
-ok "ArizenOS filesystem structure created"
+ok "version.json installed"
 
 # ─────────────────────────────────────────────────────────────────────────────
-section "[12/12] Summary"
+section "[10/10] Summary"
 # ─────────────────────────────────────────────────────────────────────────────
+ARIZEN_FILES=$(find "$ARIZEN_DIR" | wc -l)
 echo ""
 ok "══════════════════════════════════════"
 ok "  ArizenOS Lite injection complete!"
-ok "  v7 — Command Palette + Monitor"
+ok "  v8 — LineageOS base"
 ok "══════════════════════════════════════"
-log "  Samsung apps debloated  : $REMOVED packages"
-log "  Samsung launchers gone  : $LAUNCHER_REMOVED replaced by Arizen"
-log "  Samsung overlays gone   : $OVL_REMOVED removed"
-log "  Boot animation          : ArizenOS Lite (cinematic)"
-log "  Boot sound              : stripped (silent)"
-log "  Branding                : 100% ArizenOS"
+log "  Stock launchers removed : $LAUNCHER_REMOVED (Trebuchet/Launcher3)"
+log "  LineageOS extras removed: $LOS_REMOVED"
+log "  Arizen Launcher         : installed as default HOME"
+log "  Boot animation          : $([ -n "${BOOTANIM:-}" ] && echo "ArizenOS" || echo "LineageOS default")"
+log "  ArizenOS branding       : 100% — 1.1 Zenith"
+log "  Base OS preserved       : LineageOS kernel + vendor + blobs"
 log "  RAM tuning              : 2GB-optimized (ZRAM 512MB lz4)"
 log "  LMK tuning              : 6-level 2GB profile"
 log "  Perf profiles           : balanced/performance/saver"
-log "  sysctl                  : 99-arizen.conf"
-log "  Arizen Launcher         : default HOME"
-log "  New features            : Command Palette, System Monitor, Workspace"
+log "  Features                : CMD Palette, Monitor, Workspace"
+log "  ArizenOS assets         : $ARIZEN_FILES files"
 echo ""
-log "Next: sudo bash scripts/repack_ap.sh"
+log "Next: sudo bash scripts/repack_odin.sh"

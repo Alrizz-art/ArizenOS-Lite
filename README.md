@@ -7,29 +7,36 @@
     <img src="https://github.com/Alrizz-art/ArizenOS-Lite/actions/workflows/build.yml/badge.svg" alt="Build Status"/>
   </a>
   <img src="https://img.shields.io/badge/Device-SM--T295-0D6EFD?style=flat-square&logo=samsung&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Android-9%20%2F%2010-3DDC84?style=flat-square&logo=android&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Base-Samsung%20Stock-1428A0?style=flat-square"/>
+  <img src="https://img.shields.io/badge/Android-11%20%2F%2018.1-3DDC84?style=flat-square&logo=android&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Base-LineageOS-8BC34A?style=flat-square&logo=lineageos&logoColor=white"/>
   <img src="https://img.shields.io/badge/Flash-Odin%20%2F%20Heimdall-E53935?style=flat-square"/>
   <img src="https://img.shields.io/badge/RAM-2GB%20Optimized-7B2FFF?style=flat-square"/>
   <img src="https://img.shields.io/badge/License-MIT-22C55E?style=flat-square"/>
 </p>
 
-<h3 align="center">Stock Samsung firmware — debloated, optimized, Arizen Launcher as default home</h3>
+<h3 align="center">LineageOS-based custom ROM — Odin-flashable AP.tar.md5 for SM-T295</h3>
 
 ---
 
 ## What is ArizenOS Lite?
 
-ArizenOS Lite is **not** a full custom ROM rewrite. It is an intelligent modification of official Samsung stock firmware — preserving full hardware compatibility, Samsung kernel, vendor blobs, and partition layout — while replacing the launcher and removing bloatware.
+ArizenOS Lite is a fully custom Android experience for the **Samsung Galaxy Tab A 8.0" 2019 (SM-T295)**, built on top of **LineageOS** — replacing Samsung's bloated stock firmware entirely.
+
+LineageOS provides the clean, open-source Android base. ArizenOS layers on top with a custom identity, productivity tools, and hardware tuning for this specific device.
 
 ```
-Samsung Stock Firmware (SM-T295)
-  ├── Debloat — 84 Samsung/Facebook/Knox packages removed
-  ├── Arizen Launcher — replaces TouchWizHome, set as default HOME
+LineageOS (SM-T295 / gtaslte build)
+  ├── Stock launchers removed (Trebuchet / Launcher3)
+  ├── Arizen Launcher — AI-centered home screen, default HOME
+  ├── ArizenOS branding — 100% custom identity (no LineageOS/Samsung)
+  ├── Command Palette — Linux-style >CMD launcher (16 system commands)
+  ├── System Monitor — live RAM/CPU/battery/thermal dashboard
+  ├── Workspace Mode — focused productivity with session timer
   ├── ZRAM 512MB — lz4 compression for 2GB RAM
-  ├── build.prop tuning — heap, LMK, VM sysctl
-  └── Odin repackaging — valid .tar.md5 with MD5 self-check
-= ArizenOS Lite  →  flash via Odin/Heimdall
+  ├── Performance Profiles — balanced / performance / battery saver
+  ├── LMK + sysctl tuning — 2GB-optimized memory management
+  └── Odin repackaging — valid AP.tar.md5 flashable via Odin/Heimdall
+= ArizenOS Lite v1.1 "Zenith"
 ```
 
 ---
@@ -38,52 +45,86 @@ Samsung Stock Firmware (SM-T295)
 
 | Field | Value |
 |-------|-------|
-| **Model** | Samsung Galaxy Tab A 8.0 (2019) |
+| **Model** | Samsung Galaxy Tab A 8.0" (2019) |
 | **Model Number** | SM-T295 |
-| **Android** | 9 Pie / 10 |
+| **Codename** | gtaslte |
+| **Chipset** | Snapdragon 429 (MSM8937) |
+| **Android** | LineageOS 18.1 (Android 11) recommended |
 | **RAM** | 2 GB |
 | **Storage** | 32 GB |
 | **Flash Method** | Odin (Windows) · Heimdall (macOS/Linux) |
 
 ---
 
+## Why LineageOS instead of Samsung stock?
+
+| | Samsung Stock | ArizenOS Lite |
+|--|--------------|--------------|
+| Bloatware | 60–80 Samsung apps | None |
+| Bixby | Always running | Removed |
+| Update path | Samsung-controlled | Community |
+| Modifiable | Difficult (EROFS on newer builds) | Yes (ext4) |
+| Privacy | Samsung telemetry | Clean |
+| Base | Proprietary | Open source (LineageOS) |
+
+---
+
 ## Features
 
-### Arizen Launcher
-- Dashboard-style AI-centered home screen
-- Ultra lightweight — no background services by default
-- Built-in AI assistant shortcut (Arizen Core)
-- Clean app grid with minimal dock
-- Replaces Samsung TouchWizHome / SecLauncher
+### Arizen Launcher (v1.1)
+- Live stat bar — RAM free, performance profile, quick buttons
+- `> CMD` Command Palette — Linux-style launcher, 16 system commands
+- System Monitor — live hardware dashboard (RAM / CPU / battery / thermal)
+- Workspace Mode — focus timer, session management, distraction-free
+- AI assistant shortcut (Groq / Together.ai — free tier)
+- Clean app grid with configurable columns and minimal dock
 
-### Performance Tuning (2GB RAM optimized)
-| Setting | Value | Effect |
-|---------|-------|--------|
-| `dalvik.vm.heapgrowthlimit` | 128 MB | GC fires earlier → more free RAM |
-| `dalvik.vm.heapsize` | 256 MB | App RAM cap |
+### Performance (2GB RAM optimized)
+| Tuning | Value | Effect |
+|--------|-------|--------|
+| ZRAM | 512MB lz4 | Compressed swap, ~2.5GB effective RAM |
+| Dalvik heapgrowthlimit | 128MB | GC fires earlier, more free RAM |
 | `ro.sys.fw.bg_apps_limit` | 8 | Background process cap |
-| ZRAM | 512 MB lz4 | Compressed swap, negligible CPU cost |
-| `vm.vfs_cache_pressure` | 150 | Reclaim page cache aggressively |
+| LMK minfree | 18→96MB | Kills empties first, keeps foreground alive |
+| CPU governor | schedutil | Kernel-driven, efficient on SD429 |
 | `vm.swappiness` | 60 | Swap to ZRAM before OOM |
-| LMK | Aggressive | Kill BG apps before system slows |
 
-### Debloat
-**84 packages removed** including: Bixby suite, SamsungPay, Facebook, OneDrive, LinkedIn, Knox/SecureFolder, Samsung Health, AR Zone, Samsung Members, GalaxyStore, Kids Mode, and more.
+### Performance Profiles (switchable in System Monitor)
+| Profile | Governor | Description |
+|---------|----------|-------------|
+| Balanced | schedutil | Default — kernel-driven efficiency |
+| Performance | interactive | Max freq — for AI / heavy tasks |
+| Battery Saver | conservative | Lower freq — long sessions |
 
-See full list: [`config/debloat_list.txt`](config/debloat_list.txt)
+---
+
+## Build Pipeline
+
+```
+LineageOS zip (firmware/)
+      │
+      ▼
+scripts/unpack_lineage.sh     ← extract system.img, detect format, mount
+      │
+      ▼
+scripts/inject_arizenos.sh    ← install launcher, branding, tuning, init.rc
+      │
+      ▼
+scripts/repack_odin.sh        ← unmount, shrink, sparse, AP.tar.md5 + MD5
+      │
+      ▼
+output/ArizenOS-Lite_v1.1_SM-T295_YYYYMMDD_AP.tar.md5
+```
 
 ---
 
 ## Quick Build (GitHub Actions — Recommended)
 
-No local setup needed. Uses the official Samsung firmware auto-downloader.
-
 1. Fork this repo
-2. Go to **Actions** tab → **Build ArizenOS Lite** → **Run workflow**
-3. Choose your region (`XSP` = Global)
-4. Wait ~60-90 min → download from **Releases** tab
-
-The CI pipeline runs **7 Odin validation checks** before creating a release — including GNU tar magic bytes, MD5 integrity, and system.img size verification.
+2. Get a LineageOS zip for SM-T295 (see [docs/build-guide.md](docs/build-guide.md))
+3. Add the download URL as a GitHub secret: `LINEAGE_ZIP_URL`
+4. Go to **Actions → Build ArizenOS Lite → Run workflow**
+5. Wait ~30-60 min → download from **Releases**
 
 ---
 
@@ -93,13 +134,17 @@ The CI pipeline runs **7 Odin validation checks** before creating a release — 
 
 ```bash
 # Ubuntu / Debian
-sudo apt-get install -y android-tools-fsutils e2fsprogs tar lz4 unzip file
+sudo apt-get install -y \
+    android-tools-fsutils \
+    e2fsprogs \
+    brotli \
+    unzip \
+    lz4 \
+    file \
+    python3
 
-# macOS (via Docker — see PANDUAN_LENGKAP.md)
-./auto_build_mac.sh
+# macOS — use Docker (see docs/build-guide.md)
 ```
-
-> **Note:** `simg2img` / `img2simg` is required. Install via `android-tools-fsutils` or build from [anestisb/android-simg2img](https://github.com/anestisb/android-simg2img).
 
 ### Steps
 
@@ -108,35 +153,39 @@ sudo apt-get install -y android-tools-fsutils e2fsprogs tar lz4 unzip file
 git clone https://github.com/Alrizz-art/ArizenOS-Lite.git
 cd ArizenOS-Lite
 
-# 2. Place Samsung SM-T295 firmware zip in firmware/
-mkdir -p firmware
-# → copy your T295XXU*.zip here
-# → or let the script download it automatically
+# 2. Get LineageOS zip for SM-T295
+bash scripts/download_lineage.sh
+# Or manually: place zip in firmware/
 
 # 3. Build Arizen Launcher APK
 cd arizen-launcher && ./gradlew assembleRelease && cd ..
 cp arizen-launcher/app/build/outputs/apk/release/*.apk ArizenLauncher.apk
 
-# 4. Build firmware
+# 4. Build ArizenOS
 chmod +x scripts/*.sh
-./scripts/extract_firmware.sh firmware/YOUR_FIRMWARE.zip
-sudo ./scripts/unpack_ap.sh
-sudo ./scripts/inject_arizenos.sh
-sudo ./scripts/repack_ap.sh
-./scripts/package_odin.sh
+sudo bash scripts/unpack_lineage.sh          # extract + mount
+sudo bash scripts/inject_arizenos.sh         # inject ArizenOS
+sudo bash scripts/repack_odin.sh             # package Odin AP.tar.md5
 
-# Output: output/ArizenOSLite_v1.0_SM-T295_YYYYMMDD_AP.tar.md5
+# Output: output/ArizenOS-Lite_v1.1_SM-T295_YYYYMMDD_AP.tar.md5
 ```
 
 ---
 
 ## Flash Instructions
 
+### Prerequisites
+
+Before flashing, you need **TWRP custom recovery** installed on SM-T295:
+1. Download TWRP for SM-T295 from [twrp.me](https://twrp.me) or XDA
+2. Flash TWRP via Odin first (put in AP slot)
+3. Then flash ArizenOS via TWRP, OR flash the AP.tar.md5 directly via Odin
+
 ### Windows — Odin
 
-1. Download `ArizenOSLite_v*_SM-T295_*_AP.tar.md5` from [Releases](../../releases)
+1. Download `ArizenOS-Lite_v*_SM-T295_*_AP.tar.md5` from [Releases](../../releases)
 2. Boot SM-T295 into **Download Mode**:
-   > Power off → hold `Power + Vol Down + Bixby` simultaneously → press `Vol Up` to confirm
+   > Power off → hold `Power + Vol Down` → press `Vol Up` to confirm
 3. Connect USB to PC
 4. Open **Odin v3.14.4+**
 5. Click **AP** → select the downloaded `.tar.md5` file
@@ -150,27 +199,43 @@ sudo ./scripts/repack_ap.sh
 brew install heimdall          # macOS
 sudo apt install heimdall-flash  # Ubuntu/Debian
 
-# Boot device into Download Mode first, then:
+# Boot device into Download Mode, then:
 heimdall detect
 
-# Get partition layout
-heimdall print-pit > pit.txt
-
-# Flash system partition
+# Flash system partition directly
 heimdall flash --SYSTEM work/system_raw.img --no-reboot
-# Then manually reboot: hold Power + Vol Up
+# Manually reboot: hold Power + Vol Up
 ```
 
-> ⚠️ Heimdall flashes raw partition images, not `.tar.md5`. Use `work/system_raw.img` (produced during build) or unpack the tar first.
+### Via TWRP (Alternative)
+
+If you have TWRP installed:
+1. Reboot to recovery (Power + Vol Up at boot)
+2. Wipe → Dalvik/ART Cache + Cache
+3. Install → select ArizenOS-Lite*.tar.md5
+4. Reboot System
+
+---
+
+## First Boot
+
+First boot takes **3–5 minutes** (LineageOS initial setup + Arizen init).
+
+After boot:
+1. Skip Samsung/Google account setup if prompted
+2. Arizen Launcher opens automatically as HOME
+3. Tap **> CMD** to try the Command Palette
+4. Tap **Monitor** in dock to see live system stats
+5. Go to **Labs → AI** to configure your AI assistant (Groq is free)
 
 ---
 
 ## Recovery
 
-If the device bootloops, flash original Samsung firmware:
-
-1. Download original firmware from [samfw.com](https://samfw.com) → search SM-T295
-2. Flash via Odin with original AP/BL/CP/CSC files
+If the device bootloops:
+1. Download the original **LineageOS** zip for SM-T295
+2. Flash via TWRP (wipe first)
+3. Or flash original Samsung firmware from [samfw.com](https://samfw.com) via Odin
 
 ---
 
@@ -178,25 +243,36 @@ If the device bootloops, flash original Samsung firmware:
 
 ```
 ArizenOS-Lite/
-├── arizen-launcher/          # Launcher source (Android/Java)
-│   ├── src/main/
-│   │   ├── java/com/arizen/launcher/
-│   │   └── res/
-│   └── build.gradle
+├── arizen-launcher/              # Launcher source (Android/Java)
+│   └── src/main/java/.../
+│       ├── MainActivity.java
+│       ├── ArizenCommandPaletteActivity.java
+│       ├── ArizenSystemMonitorActivity.java
+│       └── ArizenWorkspaceActivity.java
 ├── scripts/
-│   ├── extract_firmware.sh   # Unzip Samsung firmware
-│   ├── unpack_ap.sh          # Strip MD5, decompress, mount system
-│   ├── inject_arizenos.sh    # Debloat + inject APKs + build.prop
-│   ├── repack_ap.sh          # Unmount, fsck, sparse → raw
-│   └── package_odin.sh       # tar + MD5 → Odin flashable
+│   ├── download_lineage.sh       # Auto-download LineageOS zip
+│   ├── unpack_lineage.sh         # Extract + mount system.img
+│   ├── inject_arizenos.sh        # Inject launcher, branding, tuning
+│   ├── repack_odin.sh            # Package Odin AP.tar.md5
+│   ├── debloat.sh                # ADB live debloat (optional)
+│   └── generate_md5.sh           # MD5 utility
 ├── config/
-│   ├── debloat_list.txt      # 84 packages to remove
-│   └── build_config.sh       # Version/path config
-├── .github/workflows/
-│   └── build.yml             # Full CI pipeline with Odin validation
-├── docs/                     # Flashing, optimization, troubleshooting guides
-├── auto_build_mac.sh         # One-click build for macOS (Docker)
-└── PANDUAN_LENGKAP.md        # Full Indonesian language guide
+│   ├── performance_profiles.sh   # 3 CPU governor profiles
+│   ├── lmk_config.sh             # LMK tuning (2GB/3GB)
+│   ├── thermal_config.sh         # Thermal zone management
+│   ├── sysctl_arizen.conf        # TCP + VM + scheduler sysctl
+│   ├── debloat_adb.sh            # ADB debloat script (84 packages)
+│   └── zram_config.sh            # ZRAM setup (auto 2/3GB detect)
+├── arizen-assets/
+│   ├── init.arizen.rc            # Init.rc reference
+│   └── build.prop.patch          # build.prop patch reference
+├── docs/
+│   ├── build-guide.md            # Full LineageOS build guide
+│   ├── flashing-guide.md         # Detailed flash instructions
+│   ├── optimization.md           # Performance tuning guide
+│   ├── command-palette.md        # Command palette reference
+│   └── troubleshooting.md        # Common issues
+└── firmware/                     # Place LineageOS zip here
 ```
 
 ---
@@ -205,12 +281,12 @@ ArizenOS-Lite/
 
 | Doc | Description |
 |-----|-------------|
-| [PANDUAN_LENGKAP.md](PANDUAN_LENGKAP.md) | Full guide in Bahasa Indonesia (MacBook → flash) |
+| [docs/build-guide.md](docs/build-guide.md) | Full LineageOS → ArizenOS build process |
+| [docs/command-palette.md](docs/command-palette.md) | Command palette reference |
+| [docs/optimization.md](docs/optimization.md) | Post-flash performance tuning |
 | [docs/flashing-guide.md](docs/flashing-guide.md) | Detailed flash instructions |
-| [docs/ai-setup-guide.md](docs/ai-setup-guide.md) | AI assistant setup (Groq, Together, etc.) |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues & solutions |
-| [docs/optimization.md](docs/optimization.md) | Post-flash optimization tips |
-| [config/debloat_list.txt](config/debloat_list.txt) | Full debloat package list |
+| [PANDUAN_LENGKAP.md](PANDUAN_LENGKAP.md) | Full guide in Bahasa Indonesia |
 
 ---
 
@@ -218,9 +294,9 @@ ArizenOS-Lite/
 
 ArizenOS Lite modifies device firmware. By using this project:
 - **Always backup your data before flashing**
-- Keep the original Samsung firmware for recovery
-- Flash at your own risk — the maintainer is not responsible for bricked devices
-- This project is not affiliated with or endorsed by Samsung Electronics
+- Keep a recovery method (TWRP + LineageOS zip)
+- Flash at your own risk — maintainer is not responsible for bricked devices
+- Not affiliated with Samsung Electronics or the LineageOS project
 
 ---
 
