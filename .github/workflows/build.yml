@@ -18,6 +18,10 @@ on:
         required: true
         default: 'true'
         type: boolean
+      samsung_fw_url:
+        description: 'URL langsung firmware Samsung ZIP (kosongkan = auto-download via samloader)'
+        required: false
+        default: ''
 
 env:
   DEVICE_MODEL: SM-T295
@@ -118,12 +122,34 @@ jobs:
       # ── STEP 2: DOWNLOAD FIRMWARE SAMSUNG ────────────────────────────────
       - name: Download firmware via samloader
         run: |
-          pip install git+https://github.com/nlscc/samloader.git --quiet 2>/dev/null || pip install samloader --quiet 2>/dev/null || true
           mkdir -p firmware
 
-          samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -O firmware --auto-download 2>/dev/null \
-          || samloader --model $DEVICE_MODEL --region ${{ inputs.device_region }} download --output firmware 2>/dev/null \
-          || { echo "samloader failed for region ${{ inputs.device_region }}"; exit 1; }
+          # Opsi 1: URL langsung dari input workflow (bypass samloader)
+          if [[ -n "${{ inputs.samsung_fw_url }}" ]]; then
+            echo "Downloading firmware dari URL langsung..."
+            wget -q --show-progress -O firmware/samsung_fw.zip "${{ inputs.samsung_fw_url }}" \
+              || curl -L -o firmware/samsung_fw.zip "${{ inputs.samsung_fw_url }}"
+            echo "Firmware downloaded dari URL"
+
+          # Opsi 2: samloader auto-download
+          else
+            pip install git+https://github.com/nlscc/samloader.git --quiet 2>/dev/null || true
+            pip install samloader --quiet 2>/dev/null || true
+
+            if command -v samloader &>/dev/null; then
+              samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -O firmware --auto-download \
+                || samloader --model $DEVICE_MODEL --region ${{ inputs.device_region }} download --output firmware \
+                || true
+            fi
+
+            FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
+            if [[ -z "$FW_ZIP" ]]; then
+              echo "Samsung server memblokir GitHub Actions IP."
+              echo "SOLUSI: Jalankan ulang workflow, isi field samsung_fw_url dengan URL firmware ZIP."
+              echo "Download dari: https://samfw.com | https://sfirmware.com | https://sammobile.com"
+              exit 1
+            fi
+          fi
 
           FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
           [[ -z "$FW_ZIP" ]] && { echo "Firmware zip not found"; exit 1; }
