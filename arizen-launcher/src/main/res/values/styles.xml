@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ArizenOS base theme — AMOLED dark, no action bar -->
+    <style name="ArizenTheme" parent="android:Theme.Material">
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:colorBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:navigationBarColor">@color/nav_bar</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:colorAccent">@color/accent_blue</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:fontFamily">sans-serif-light</item>
+    </style>
+
+    <!-- Assistant overlay — semi-transparent, slides up from bottom -->
+    <style name="ArizenAssistantTheme" parent="ArizenTheme">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowAnimationStyle">@style/ArizenSlideUp</item>
+        <item name="android:windowBackground">@color/bg_primary</item>
+    </style>
+
+    <!-- Slide-up animation for assistant -->
+    <style name="ArizenSlideUp">
+        <item name="android:windowEnterAnimation">@android:anim/slide_in_left</item>
+        <item name="android:windowExitAnimation">@android:anim/slide_out_right</item>
+    </style>
+</resources>
