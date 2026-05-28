@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       device_region:
-        description: 'Region firmware SM-T295 (XSP=Global, INS=India, EUX=Europe)'
+        description: 'Region firmware SM-T295 (XSE=Indonesia, XSP=Global, INS=India, EUX=Europe)'
         required: true
-        default: 'XSP'
+        default: 'XSE'
         type: choice
-        options: [XSP, INS, EUX, DBT, BTU, SER, THL, OXM]
+        options: [XSE, XSP, INS, EUX, DBT, BTU, SER, THL, OXM]
       arizen_version:
         description: 'Versi ArizenOS (contoh: 1.0)'
         required: true
@@ -72,21 +72,16 @@ jobs:
           echo "Building ArizenLauncher from source..."
           cd arizen-launcher
 
-          # Ensure gradle-wrapper.jar is present (binary, may not be in git clone)
-          if [[ ! -f gradle/wrapper/gradle-wrapper.jar ]]; then
-            echo "Downloading gradle-wrapper.jar..."
-            mkdir -p gradle/wrapper
-            curl -sL https://raw.githubusercontent.com/gradle/gradle/v7.5.0/gradle/wrapper/gradle-wrapper.jar \
-              -o gradle/wrapper/gradle-wrapper.jar
-            echo "gradle-wrapper.jar: $(du -sh gradle/wrapper/gradle-wrapper.jar | cut -f1)"
+          chmod +x gradlew 2>/dev/null || true
+          if [[ ! -f gradlew ]]; then
+            gradle wrapper --gradle-version 7.6
           fi
 
-          chmod +x gradlew
           ./gradlew assembleRelease \
             --no-daemon \
             --stacktrace \
             -Pandroid.suppressUnsupportedCompileSdk=28 \
-            2>&1 | tail -60
+            2>&1 | tail -50
 
           APK=$(find . -name "*.apk" -path "*/release/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
@@ -96,6 +91,7 @@ jobs:
           echo "APK built: $(basename $APK) ($(du -sh $APK | cut -f1))"
           cd ..
 
+      # ── DOWNLOAD FIRMWARE ────────────────────────────────────────────────
       - name: Download firmware via samloader
         run: |
           pip install samloader --quiet
