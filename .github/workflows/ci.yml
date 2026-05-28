@@ -10,24 +10,23 @@ on:
       - 'CONTRIBUTING.md'
   workflow_dispatch:
     inputs:
-      gsi_url:
-        description: 'Override GSI URL (kosongkan = pakai secret GSI_URL)'
+      base_url:
+        description: 'Override URL base ROM (Google Drive file/folder link atau direct URL)'
         required: false
         default: ''
       arizen_version:
-        description: 'Override versi ArizenOS'
+        description: 'Override versi ArizenOS (default: dari build_config.sh)'
         required: false
         default: ''
 
 env:
   DEVICE_MODEL: SM-T295
-  ARIZEN_ANDROID: "9"
 
 jobs:
   build:
-    name: "Build ArizenOS Lite — GSI"
+    name: "Build ArizenOS Lite — SM-T295"
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: write
 
@@ -36,11 +35,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ── 2. RESOLVE VERSION & GSI URL ───────────────────────────────────────
+      # ── 2. RESOLVE VERSION & BASE URL ──────────────────────────────────────
       - name: Resolve build variables
         id: vars
         run: |
-          # Version: input override → build_config → date-based fallback
+          # Version
           if [[ -n "${{ inputs.arizen_version }}" ]]; then
             VERSION="${{ inputs.arizen_version }}"
           elif [[ -f config/build_config.sh ]]; then
@@ -60,20 +59,19 @@ jobs:
           echo "TAG=$TAG"                 >> $GITHUB_OUTPUT
           echo "OUTPUT_NAME=$OUTPUT_NAME" >> $GITHUB_OUTPUT
 
-          # Resolve GSI URL: workflow input → secret
-          GSI_URL_RESOLVED="${{ inputs.gsi_url }}"
-          if [[ -z "$GSI_URL_RESOLVED" ]]; then
-            GSI_URL_RESOLVED="${{ secrets.GSI_URL }}"
-          fi
-          if [[ -z "$GSI_URL_RESOLVED" ]]; then
-            echo "❌ GSI_URL tidak ditemukan."
-            echo "   Set secret GSI_URL di: Settings → Secrets and variables → Actions"
+          # Resolve base ROM URL: workflow input → secret
+          BASE_URL="${{ inputs.base_url }}"
+          [[ -z "$BASE_URL" ]] && BASE_URL="${{ secrets.GSI_URL }}"
+          if [[ -z "$BASE_URL" ]]; then
+            echo "❌ GSI_URL secret tidak diset."
+            echo "   Pergi ke: GitHub repo → Settings → Secrets and variables → Actions → New repository secret"
+            echo "   Name: GSI_URL   Value: link Google Drive folder atau file kamu"
             exit 1
           fi
-          echo "GSI_URL=$GSI_URL_RESOLVED" >> $GITHUB_OUTPUT
+          echo "BASE_URL=$BASE_URL" >> $GITHUB_OUTPUT
           echo "✅ Version : $VERSION"
           echo "✅ Tag     : $TAG"
-          echo "✅ GSI URL : $GSI_URL_RESOLVED"
+          echo "✅ Base URL: $BASE_URL"
 
       # ── 3. INSTALL BUILD TOOLS ─────────────────────────────────────────────
       - name: Install build tools
@@ -81,7 +79,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
             tar unzip file lz4 xz-utils brotli \
-            e2fsprogs pv wget curl openssl
+            e2fsprogs pv wget curl openssl python3-pip
+
+          # gdown — handles large Google Drive files (virus-scan bypass)
+          pip3 install -q gdown
 
           # simg2img / img2simg
           sudo apt-get install -y -qq android-tools-fsutils 2>/dev/null || true
@@ -91,8 +92,8 @@ jobs:
             make -C /tmp/simg2img-src
             sudo cp /tmp/simg2img-src/simg2img /tmp/simg2img-src/img2simg /usr/local/bin/
           fi
-          echo "simg2img: $(simg2img --version 2>&1 | head -1 || echo ok)"
-          echo "img2simg: $(command -v img2simg)"
+          echo "simg2img: $(command -v simg2img)"
+          echo "gdown   : $(gdown --version 2>&1 | head -1)"
 
       # ── 4. BUILD ARIZENLAUNCHER APK ────────────────────────────────────────
       - name: Setup Java 17
@@ -110,14 +111,11 @@ jobs:
           cd arizen-launcher
           chmod +x gradlew 2>/dev/null || true
 
-          ./gradlew assembleDebug \
-            --no-daemon \
-            --stacktrace \
+          ./gradlew assembleDebug --no-daemon --stacktrace \
             2>&1 | tee /tmp/gradle_build.log
           EXIT=${PIPESTATUS[0]}
 
           if [[ $EXIT -ne 0 ]]; then
-            echo ""
             echo "══ GRADLE ERRORS ══"
             grep -E "error:|ERROR:|BUILD FAILED|Execution failed|Caused by:" \
               /tmp/gradle_build.log | tail -30 || true
@@ -126,56 +124,128 @@ jobs:
 
           APK=$(find . -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
-          [[ -z "$APK" ]] && { echo "❌ APK not found"; exit 1; }
+          [[ -z "$APK" ]] && { echo "❌ APK not found after build"; exit 1; }
 
           cp "$APK" "../ArizenLauncher.apk"
           echo "✅ ArizenLauncher.apk: $(du -sh ../ArizenLauncher.apk | cut -f1)"
 
-      # ── 5. DOWNLOAD GSI ────────────────────────────────────────────────────
-      - name: Download GSI
+      # ── 5. DOWNLOAD BASE ROM (Google Drive atau direct URL) ────────────────
+      - name: Download base ROM
         run: |
           mkdir -p firmware
-          GSI_URL="${{ steps.vars.outputs.GSI_URL }}"
-          echo "Downloading GSI from: $GSI_URL"
+          BASE_URL="${{ steps.vars.outputs.BASE_URL }}"
+          echo "Source: $BASE_URL"
 
-          # Detect extension to set target filename
-          EXT="${GSI_URL##*.}"
-          case "$EXT" in
-            img)  TARGET="firmware/system.img" ;;
-            xz)   TARGET="firmware/system.img.xz" ;;
-            lz4)  TARGET="firmware/system.img.lz4" ;;
-            zip)  TARGET="firmware/gsi.zip" ;;
-            *)    TARGET="firmware/system.img" ;;
-          esac
+          # ── Google Drive handler ──────────────────────────────────────────
+          if echo "$BASE_URL" | grep -q "drive.google.com"; then
 
-          wget -q --show-progress \
-            --tries=3 \
-            --timeout=300 \
-            -O "$TARGET" "$GSI_URL" || \
-          curl -L \
-            --retry 3 \
-            --max-time 300 \
-            -o "$TARGET" "$GSI_URL"
+            # Folder link → download semua file dari folder (harusnya 1 file)
+            if echo "$BASE_URL" | grep -qE "/folders/|/drive/.*/folders/"; then
+              FOLDER_ID=$(echo "$BASE_URL" | grep -oE '[A-Za-z0-9_-]{28,}' | head -1)
+              echo "Google Drive FOLDER id: $FOLDER_ID"
+              gdown --folder "https://drive.google.com/drive/folders/$FOLDER_ID" \
+                -O firmware/ --remaining-ok 2>&1 | tail -20
+              # Kalau gdown folder gagal, coba download file pertama langsung
+              if [[ -z "$(find firmware/ -name "*.md5" -o -name "*.zip" -o -name "*.img" 2>/dev/null | head -1)" ]]; then
+                echo "Folder download failed, trying individual file IDs..."
+                # Try each file ID found in the folder
+                for FID in "11t3_HR2QE6dfBuObgAhBYMu7Qwjpcpdq" "12oY-cUZiGmJknaL6h-1rzeVzxJuIE5Bn" "15-ShqcOy2h9U7yRJcHbfUcdRYrMx1OUO"; do
+                  echo "Trying file ID: $FID"
+                  gdown "https://drive.google.com/uc?id=$FID" -O "firmware/rom_$FID" 2>&1 | tail -5
+                  # Check if what we downloaded is a real file (not HTML error page)
+                  FSIZE=$(stat -c%s "firmware/rom_$FID" 2>/dev/null || echo 0)
+                  if [[ "$FSIZE" -gt 10485760 ]]; then  # > 10MB = likely real ROM
+                    echo "✅ Got file ($FSIZE bytes) from ID $FID"
+                    break
+                  else
+                    rm -f "firmware/rom_$FID"
+                  fi
+                done
+              fi
 
-          [[ -s "$TARGET" ]] || { echo "❌ Download failed or empty file"; exit 1; }
-          echo "✅ GSI downloaded: $(basename $TARGET) ($(du -sh $TARGET | cut -f1))"
+            # Direct file link → download langsung
+            else
+              FILE_ID=$(echo "$BASE_URL" | grep -oE '/d/([A-Za-z0-9_-]+)' | sed 's|/d/||' | head -1)
+              [[ -z "$FILE_ID" ]] && FILE_ID=$(echo "$BASE_URL" | grep -oE 'id=([A-Za-z0-9_-]+)' | sed 's/id=//' | head -1)
+              [[ -z "$FILE_ID" ]] && FILE_ID=$(echo "$BASE_URL" | grep -oE '[A-Za-z0-9_-]{28,}' | head -1)
+              echo "Google Drive FILE id: $FILE_ID"
+              gdown "https://drive.google.com/uc?id=$FILE_ID" -O firmware/rom_download \
+                --fuzzy 2>&1 | tail -20
+            fi
 
-          # Cache path for unpack_gsi.sh
-          echo "$(pwd)/$TARGET" > firmware/.rom_path
+          # ── Direct URL handler ────────────────────────────────────────────
+          else
+            EXT="${BASE_URL##*.}"
+            TARGET="firmware/rom_download.$EXT"
+            wget -q --show-progress --tries=3 --timeout=300 -O "$TARGET" "$BASE_URL" || \
+              curl -L --retry 3 --max-time 300 -o "$TARGET" "$BASE_URL"
+          fi
 
-      # ── 6. UNPACK GSI (needs --privileged equivalent: sudo) ───────────────
-      - name: Unpack GSI
+          # ── Verify download ───────────────────────────────────────────────
+          ROM_FILE=$(find firmware/ -size +10M \( \
+            -name "*.md5" -o -name "*.tar" -o -name "*.zip" \
+            -o -name "*.img" -o -name "*.xz" -o -name "*.lz4" \
+            -o -name "rom_*" \
+          \) 2>/dev/null | head -1)
+
+          [[ -z "$ROM_FILE" ]] && { echo "❌ Download failed or file too small"; ls -lh firmware/; exit 1; }
+          echo "✅ Downloaded: $(basename $ROM_FILE) ($(du -sh $ROM_FILE | cut -f1))"
+
+          # ── Detect file type & set pipeline ──────────────────────────────
+          FILE_TYPE=$(file "$ROM_FILE")
+          echo "File type: $FILE_TYPE"
+
+          # Samsung AP tar.md5 (AP_T*.md5 / *.tar / *.tar.md5)
+          if echo "$ROM_FILE" | grep -qiE "(AP_T|\.tar\.md5|\.md5)$" || \
+             echo "$FILE_TYPE" | grep -qi "tar archive"; then
+            echo "PIPELINE=samsung_ap" >> $GITHUB_ENV
+            echo "ROM_FILE=$ROM_FILE"  >> $GITHUB_ENV
+            echo "→ Pipeline: Samsung AP partition"
+
+          # ZIP containing system.img or payload
+          elif echo "$ROM_FILE" | grep -qiE "\.zip$"; then
+            echo "PIPELINE=zip"       >> $GITHUB_ENV
+            echo "ROM_FILE=$ROM_FILE" >> $GITHUB_ENV
+            echo "→ Pipeline: ZIP (auto-detect inside)"
+
+          # Raw / sparse / compressed image
+          else
+            echo "PIPELINE=gsi"       >> $GITHUB_ENV
+            echo "ROM_FILE=$ROM_FILE" >> $GITHUB_ENV
+            echo "→ Pipeline: GSI image"
+          fi
+
+      # ── 6. UNPACK BASE ROM ─────────────────────────────────────────────────
+      - name: Unpack base ROM
         run: |
           chmod +x scripts/*.sh
-          sudo bash scripts/unpack_gsi.sh
+          mkdir -p work
+
+          if [[ "$PIPELINE" == "samsung_ap" ]]; then
+            echo "━━━ Samsung AP pipeline ━━━"
+            # Rename/link so unpack_ap.sh can find it
+            cp "$ROM_FILE" work/AP.tar.md5 2>/dev/null || \
+              ln -sf "$(realpath $ROM_FILE)" work/AP.tar.md5
+            sudo bash scripts/unpack_ap.sh
+
+          elif [[ "$PIPELINE" == "zip" ]]; then
+            echo "━━━ ZIP pipeline ━━━"
+            echo "$ROM_FILE" > firmware/.rom_path
+            sudo bash scripts/unpack_gsi.sh "$ROM_FILE"
+
+          else
+            echo "━━━ GSI image pipeline ━━━"
+            echo "$ROM_FILE" > firmware/.rom_path
+            sudo bash scripts/unpack_gsi.sh "$ROM_FILE"
+          fi
 
       # ── 7. INJECT ARIZENOS ─────────────────────────────────────────────────
       - name: Inject ArizenOS components
         run: |
           sudo bash scripts/inject_arizenos.sh
-          echo "✅ Injected: launcher + debloat + branding + ZRAM + perf tweaks"
+          echo "✅ Injected: ArizenLauncher + debloat + branding + ZRAM + perf tweaks"
 
-      # ── 8. REPACK AP ───────────────────────────────────────────────────────
+      # ── 8. REPACK ──────────────────────────────────────────────────────────
       - name: Repack AP partition
         run: sudo bash scripts/repack_ap.sh
 
@@ -187,7 +257,7 @@ jobs:
           bash scripts/package_odin.sh
 
           OUTPUT=$(find output/ -name "*.tar.md5" | head -1)
-          [[ -z "$OUTPUT" ]] && { echo "❌ Package not found"; exit 1; }
+          [[ -z "$OUTPUT" ]] && { echo "❌ Package not found in output/"; exit 1; }
           echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
           echo "✅ Packaged: $(basename $OUTPUT) ($(du -sh $OUTPUT | cut -f1))"
 
@@ -196,30 +266,26 @@ jobs:
         run: |
           bash scripts/generate_md5.sh 2>/dev/null || \
             md5sum "$OUTPUT_FILE" > "${OUTPUT_FILE}.md5sum"
-          echo "✅ MD5 generated"
 
       # ── 11. VALIDATE ODIN FORMAT ───────────────────────────────────────────
       - name: Validate Odin format
         run: |
           FILE="$OUTPUT_FILE"
           SIZE=$(stat -c%s "$FILE")
-          echo "File: $(basename $FILE)"
-          echo "Size: $(du -sh $FILE | cut -f1)"
 
-          # Check tar magic
-          MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || echo "")
-          echo "Tar magic: $MAGIC"
+          echo "File : $(basename $FILE)"
+          echo "Size : $(du -sh $FILE | cut -f1)"
 
-          # Check MD5 (Samsung format: last 32 bytes)
+          # MD5 integrity (Samsung appends MD5 as last 32 bytes)
           BODY=$(( SIZE - 32 ))
           STORED=$(tail -c 32 "$FILE")
           COMPUTED=$(head -c $BODY "$FILE" | md5sum | awk '{print $1}')
           echo "MD5 stored  : $STORED"
           echo "MD5 computed: $COMPUTED"
-          [[ "$STORED" == "$COMPUTED" ]] || { echo "❌ MD5 mismatch — Odin will reject"; exit 1; }
+          [[ "$STORED" == "$COMPUTED" ]] || { echo "❌ MD5 mismatch — Odin will reject this file"; exit 1; }
           echo "✅ Odin format valid"
 
-      # ── 12. UPLOAD ARTIFACT ─────────────────────────────────────────────────
+      # ── 12. UPLOAD ARTIFACT ────────────────────────────────────────────────
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -238,28 +304,28 @@ jobs:
           prerelease: false
           files: |
             output/*.tar.md5
-            output/*.md5sum
           body: |
             ## ArizenOS Lite v${{ steps.vars.outputs.VERSION }}
 
             **Device:** Samsung Galaxy Tab A 8.0 (2019) — SM-T295
-            **Android Base:** ${{ env.ARIZEN_ANDROID }}
+            **Base ROM:** Android 12 + GApps
             **Build Date:** ${{ steps.vars.outputs.BUILD_DATE }}
-            **Commit:** ${{ github.sha }}
+            **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
 
             ---
 
-            ### Cara Flash (Odin)
-            1. Boot ke Download Mode: `Power + Vol Down` → tekan `Vol Up`
-            2. Buka Odin → **AP** → pilih file `.tar.md5`
-            3. Options: **Auto Reboot ✓** · **F.Reset Time ✓** · Re-Partition ✗
-            4. Klik **Start** → tunggu **PASS!**
+            ### Flash via Odin (Windows)
+            1. Boot ke Download Mode: tahan `Power + Vol Down` → tekan `Vol Up`
+            2. Hubungkan USB ke PC
+            3. Odin → **AP** → pilih file `.tar.md5`
+            4. Options: **Auto Reboot ✓** · **F.Reset Time ✓** · Re-Partition ✗
+            5. Klik **Start** → tunggu **PASS!**
 
-            ### Cara Flash (Heimdall — macOS/Linux)
+            ### Flash via Heimdall (macOS/Linux)
             ```bash
             heimdall detect
             heimdall flash --SYSTEM system_raw.img --no-reboot
             ```
 
             ---
-            > Built automatically from commit `${{ github.sha }}` via GitHub Actions CI.
+            > Auto-built via GitHub Actions CI dari commit `${{ github.sha }}`.
