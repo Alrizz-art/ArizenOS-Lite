@@ -39,24 +39,24 @@ mkdir -p "$FIRMWARE_DIR" "$OUTPUT_DIR"
 # ─── REGION SELECTION ─────────────────────────────────────────────────────────
 header "Select Region"
 echo "Regions untuk SM-T295:"
-echo "  1) XSE — Indonesia / Southeast Asia  (rekomendasi)"
-echo "  2) XSP — Global / International"
-echo "  3) INS — India"
-echo "  4) EUX — Europe"
-echo "  5) DBT — Germany"
-echo "  6) BTU — UK"
+echo "  1) XID — Indonesia  (rekomendasi)"
+echo "  2) XSE — Southeast Asia"
+echo "  3) XSP — Global / International"
+echo "  4) INS — India"
+echo "  5) EUX — Europe"
+echo "  6) DBT — Germany"
 echo "  7) Lainnya (masukkan manual)"
 echo ""
 read -p "Pilih region [1-7, default=1 (Indonesia)]: " REGION_CHOICE
 
 case "$REGION_CHOICE" in
-    2) DEVICE_REGION="XSP" ;;
-    3) DEVICE_REGION="INS" ;;
-    4) DEVICE_REGION="EUX" ;;
-    5) DEVICE_REGION="DBT" ;;
-    6) DEVICE_REGION="BTU" ;;
+    2) DEVICE_REGION="XSE" ;;
+    3) DEVICE_REGION="XID" ;;
+    4) DEVICE_REGION="INS" ;;
+    5) DEVICE_REGION="EUX" ;;
+    6) DEVICE_REGION="DBT" ;;
     7) read -p "Masukkan kode region: " DEVICE_REGION ;;
-    *) DEVICE_REGION="XSE" ;;
+    *) DEVICE_REGION="XID" ;;
 esac
 ok "Region: $DEVICE_REGION"
 
