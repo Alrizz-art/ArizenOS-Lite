@@ -118,7 +118,7 @@ jobs:
       # ── STEP 2: DOWNLOAD FIRMWARE SAMSUNG ────────────────────────────────
       - name: Download firmware via samloader
         run: |
-          pip install samloader --quiet
+          pip install git+https://github.com/nlscc/samloader.git --quiet 2>/dev/null || pip install samloader --quiet 2>/dev/null || true
           mkdir -p firmware
 
           samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -O firmware --auto-download 2>/dev/null \
