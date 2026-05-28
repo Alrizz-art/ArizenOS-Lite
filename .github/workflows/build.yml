@@ -1,4 +1,4 @@
-name: 🚀 Build ArizenOS Lite
+name: Build ArizenOS Lite
 
 on:
   workflow_dispatch:
@@ -27,100 +27,93 @@ jobs:
   build:
     name: ArizenOS Lite v${{ inputs.arizen_version }} — ${{ inputs.device_region }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
-      - name: 📥 Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 🔧 Install build tools
+      - name: Install build tools
         run: |
           sudo apt-get update -qq
-          # Core tools
           sudo apt-get install -y -qq \
             tar openssl unzip file lz4 \
-            e2fsprogs pv wget curl
+            e2fsprogs pv wget curl \
+            android-tools-fsutils 2>/dev/null || true
 
-          # Try to get simg2img / img2simg
-          sudo apt-get install -y -qq android-tools-fsutils 2>/dev/null || true
-
-          # If not available, build from source
-          if ! command -v simg2img &>/dev/null; then
-            echo "Building simg2img from source..."
+          # Build simg2img from source if package not available
+          if ! command -v simg2img &>/dev/null || ! command -v img2simg &>/dev/null; then
+            echo "Building simg2img/img2simg from source..."
             sudo apt-get install -y -qq build-essential libz-dev git
-            git clone --depth=1 https://github.com/anestisb/android-simg2img /tmp/simg2img
-            cd /tmp/simg2img && make && sudo cp simg2img img2simg /usr/local/bin/
+            git clone --depth=1 https://github.com/anestisb/android-simg2img /tmp/simg2img-src
+            cd /tmp/simg2img-src && make
+            sudo cp simg2img img2simg /usr/local/bin/
+            cd -
           fi
 
-          simg2img --version 2>/dev/null || echo "simg2img ready"
-          echo "✅ Build tools ready"
+          echo "Tools check:"
+          command -v simg2img && simg2img --version 2>/dev/null || echo "simg2img: OK"
+          command -v img2simg && echo "img2simg: OK"
+          command -v e2fsck && echo "e2fsck: OK"
+          command -v lz4 && echo "lz4: OK"
 
-      - name: 📡 Download firmware via samloader
+      - name: Download firmware via samloader
         run: |
           pip install samloader --quiet
           mkdir -p firmware
 
-          echo "📡 Fetching latest firmware info for $DEVICE_MODEL / ${{ inputs.device_region }}..."
+          echo "Fetching firmware for $DEVICE_MODEL / ${{ inputs.device_region }}..."
 
-          # Get latest version info first
-          samloader \
-            -m $DEVICE_MODEL \
-            -r ${{ inputs.device_region }} \
-            checkupdate 2>/dev/null || true
-
-          # Download firmware
-          samloader \
-            -m $DEVICE_MODEL \
-            -r ${{ inputs.device_region }} \
-            download \
-            -O firmware \
-            --auto-download 2>/dev/null \
-          || samloader \
-            -m $DEVICE_MODEL \
-            -r ${{ inputs.device_region }} \
-            download \
-            -O firmware
+          # samloader download — try both CLI styles for compatibility
+          samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -O firmware --auto-download 2>/dev/null \
+          || samloader --model $DEVICE_MODEL --region ${{ inputs.device_region }} download --output firmware 2>/dev/null \
+          || { echo "samloader failed — check if firmware exists for region ${{ inputs.device_region }}"; exit 1; }
 
           ls -lh firmware/
           FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
-          [[ -z "$FW_ZIP" ]] && { echo "❌ Download failed"; exit 1; }
-          echo "✅ Firmware: $(basename $FW_ZIP)"
+          [[ -z "$FW_ZIP" ]] && { echo "Firmware zip not found after download"; exit 1; }
+          echo "Firmware downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
           echo "FW_ZIP=$FW_ZIP" >> $GITHUB_ENV
 
-      - name: 📂 Extract firmware
+      - name: Extract firmware
         run: |
           chmod +x scripts/*.sh
           ./scripts/extract_firmware.sh "$FW_ZIP"
+          echo "Extracted contents:"
           ls -lh work/
 
-      - name: 🔓 Unpack AP (system partition)
+      - name: Unpack AP partition
         run: |
-          # GitHub Actions has full sudo — loop mount works
-          sudo ./scripts/unpack_ap.sh
+          # Run with sudo — required for loop mount
+          sudo bash scripts/unpack_ap.sh
+          echo "Partition images found:"
+          ls -lh work/ap_extracted/ 2>/dev/null || true
 
-      - name: 💉 Inject ArizenOS
+      - name: Inject ArizenOS components
         run: |
-          sudo ./scripts/inject_arizenos.sh
+          sudo bash scripts/inject_arizenos.sh
 
-      - name: 📦 Repack AP
+      - name: Repack AP
         run: |
-          sudo ./scripts/repack_ap.sh
+          sudo bash scripts/repack_ap.sh
 
-      - name: 🎁 Package Odin flashable
+      - name: Package Odin flashable
         run: |
-          ./scripts/package_odin.sh
+          export ARIZEN_VERSION="${{ inputs.arizen_version }}"
+          bash scripts/package_odin.sh
           OUTPUT=$(find output/ -name "*.tar.md5" | head -1)
-          [[ -z "$OUTPUT" ]] && { echo "❌ Package failed"; exit 1; }
+          [[ -z "$OUTPUT" ]] && { echo "Package not found in output/"; exit 1; }
           echo "OUTPUT_FILE=$OUTPUT" >> $GITHUB_ENV
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
+          echo "Build complete: $(basename $OUTPUT) ($(du -sh $OUTPUT | cut -f1))"
 
-      - name: 📤 Upload Artifact (always available)
+      - name: Upload artifact (always)
         uses: actions/upload-artifact@v4
         with:
           name: ArizenOS-Lite-v${{ inputs.arizen_version }}-SM-T295-${{ inputs.device_region }}
@@ -128,7 +121,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: 🏷️ Create GitHub Release
+      - name: Create GitHub Release
         if: ${{ inputs.create_release == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
@@ -137,7 +130,7 @@ jobs:
           body: |
             ## ArizenOS Lite v${{ inputs.arizen_version }}
 
-            > Transform stock Samsung firmware into a premium AI-native experience
+            > Stock Samsung firmware — modified, debloated, optimized
 
             | | |
             |--|--|
@@ -147,44 +140,55 @@ jobs:
             | **Size** | ${{ env.FILE_SIZE }} |
             | **Build** | #${{ github.run_number }} |
 
-            ### ✨ What's included
-            - **Arizen Launcher** — AI-centered dashboard homescreen
-            - **Arizen Core** — Cloud AI assistant (Groq/Together/OpenAI)
-            - **Samsung Debloat** — ~25 bloatware packages removed
-            - **ZRAM Tuning** — 512MB compressed swap for 2GB RAM
-            - **build.prop Tweaks** — Heap & performance optimization
-            - **AMOLED Dark Theme** — System-wide
+            ### Whats changed
+            - Samsung bloatware removed (~25 packages debloated)
+            - ZRAM 512MB enabled via `/system/etc/init/arizen_zram.rc`
+            - build.prop: performance heap tuning for 2GB RAM
+            - ArizenOS branding (`ro.arizen.*` props)
+            - Arizen Launcher (if APK was present in repo)
+            - Arizen AI Core (if APK was present in repo)
 
-            ### ⚡ Flash via Odin
+            ### Flash via Odin (Windows)
             1. Download `${{ env.OUTPUT_NAME }}` below
-            2. Boot SM-T295 → **Download Mode** (`Power + Vol↓ + Bixby` → `Vol↑`)
-            3. Odin → **AP** → select file → **Start**
-            4. Wait for **PASS!** — device reboots into ArizenOS Lite ✅
+            2. Boot SM-T295 to **Download Mode**: hold `Power + Vol Down + Bixby`, then press `Vol Up`
+            3. Open Odin v3.14 → click **AP** → select the `.tar.md5` file
+            4. Options: **Auto Reboot ON** | **F.Reset Time ON** | **Re-Partition OFF**
+            5. Click **Start** — wait for green **PASS!**
+            6. Device reboots into ArizenOS Lite
 
-            ### ⚠️ Important
-            - Backup all data before flashing
-            - Re-Partition must be **OFF** in Odin
-            - Keep stock firmware for recovery
-            - See [PANDUAN_LENGKAP.md](PANDUAN_LENGKAP.md) for full guide
+            ### Flash via Heimdall (macOS/Linux)
+            ```bash
+            heimdall flash --SYSTEM output/${{ env.OUTPUT_NAME }}
+            ```
+
+            ### Recovery (if bootloop)
+            Download original SM-T295 firmware from [samfw.com](https://samfw.com) and re-flash AP.
 
             ---
-            *Built with GitHub Actions — ArizenOS Project by @Alrizz-art*
+            *Built by GitHub Actions — ArizenOS by @Alrizz-art*
           files: output/*.tar.md5
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ✅ Summary
+      - name: Build summary
+        if: always()
         run: |
           {
-            echo "## 🎉 ArizenOS Lite Build Complete!"
+            echo "## ArizenOS Lite Build Result"
             echo ""
-            echo "| Field | Value |"
-            echo "|-------|-------|"
-            echo "| File | \`$OUTPUT_NAME\` |"
-            echo "| Size | $FILE_SIZE |"
-            echo "| Region | ${{ inputs.device_region }} |"
-            echo "| Build | #${{ github.run_number }} |"
-            echo ""
-            echo "**Download dari tab [Releases](../../releases) atau [Artifacts](#artifacts) di atas!** ⬆️"
+            if [[ -n "${OUTPUT_NAME:-}" ]]; then
+              echo "**Status: SUCCESS**"
+              echo ""
+              echo "| Field | Value |"
+              echo "|-------|-------|"
+              echo "| File | \`$OUTPUT_NAME\` |"
+              echo "| Size | $FILE_SIZE |"
+              echo "| Region | ${{ inputs.device_region }} |"
+              echo "| Build | #${{ github.run_number }} |"
+              echo ""
+              echo "Download from the **Releases** tab or **Artifacts** section above."
+            else
+              echo "**Status: FAILED** — check logs above for errors"
+            fi
           } >> $GITHUB_STEP_SUMMARY
