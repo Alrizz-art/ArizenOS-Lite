@@ -1,0 +1,3 @@
+rootProject.name = "ArizenLauncher"
+include ':app'
+project(':app').projectDir = new File('.')
