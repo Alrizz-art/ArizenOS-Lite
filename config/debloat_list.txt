@@ -1,22 +1,25 @@
 # ArizenOS Lite — Samsung Debloat List for SM-T295
 # Lines starting with # are comments
 # Format: package folder name (in /system/app or /system/priv-app)
-# SAFE TO REMOVE — tested on SM-T295
+# Tested safe for SM-T295 (Android 9/10)
 
-# ─── Samsung Bloatware ───────────────────────────────────────────────────────
-SamsungPass
-SamsungPayStub
-SamsungPay_Wear
+# ─── Bixby & Voice AI ────────────────────────────────────────────────────────
 Bixby
 BixbyVision
 BixbyRecommendation
 BixbyRoutines
+BixbySpeech
+BixbyHints
 VoiceWakeUp
 VoiceWakeUp_2.0
+QuickStar
 HiQMusic
-Samsung_Music
-SamsungBrowser
-SamsungBrowser_5.4
+
+# ─── Samsung Pay & Pass ──────────────────────────────────────────────────────
+SamsungPass
+SamsungPayStub
+SamsungPay_Wear
+SamsungPayApp
 
 # ─── Facebook ────────────────────────────────────────────────────────────────
 Facebook
@@ -26,49 +29,107 @@ FBInstaller_NS
 FBContentProvider
 Messenger
 
+# ─── Microsoft / LinkedIn ────────────────────────────────────────────────────
+OneDrive
+LinkedIn
+
+# ─── Netflix stub ────────────────────────────────────────────────────────────
+Netflix
+
 # ─── Samsung Telemetry & Analytics ──────────────────────────────────────────
 SamsungAnalyticsCloud
 SamsungPositioning
 DiagMonAgent
 HqsTelemetry
 SamsungRewardsThirdParty
+SamsungMDMIntune
+MDMApp
+MDMDiagnostics
 
-# ─── Duplicate Samsung Apps ──────────────────────────────────────────────────
-Gallery2
+# ─── Samsung Health & Wearable ───────────────────────────────────────────────
+SamsungHealth
+GearManagerStub
+AccessoryService
+EasySetup
+
+# ─── Samsung Members & Tips ──────────────────────────────────────────────────
+SamsungMembers
+SamsungTips
+WifiTips
+SMT_GB20_LedCoverApp
+
+# ─── Remote & Support ────────────────────────────────────────────────────────
+SamsungRemoteServicePlugin
+RemoteDesktop
+RCPComponents
+
+# ─── AR & Vision ─────────────────────────────────────────────────────────────
+ARZone
+AREmoji
+VisionIntelligence
+VisionProvider
+
+# ─── Samsung Browser ─────────────────────────────────────────────────────────
+SamsungBrowser
+SamsungBrowser_5.4
+
+# ─── Duplicate Samsung Apps (AOSP alternatives available) ───────────────────
 SamsungCamera2
+Gallery2
 VideoPlayer
 SamsungEmail
 SamsungCalendar
 SamsungContacts2
 SamsungDialer
 SamsungCalculator
+SamsungClock
+Samsung_Music
+VoiceNoteService
+SamsungMemo
 
-# ─── Unnecessary Background Services ────────────────────────────────────────
+# ─── Background Services & Extras ───────────────────────────────────────────
 AutoDoodle
 StickerCenter
 PersonalityChat
 ChatON
 GameHome
 GameLauncher
+GameTools
+SmartSuggestions
+SmartCapture
 
-# ─── Samsung Kids & Extras ───────────────────────────────────────────────────
+# ─── Samsung Kids ────────────────────────────────────────────────────────────
 KidsMode
 KidsModeChild
 KidsHome
 
-# ─── Misc ────────────────────────────────────────────────────────────────────
-UnifiedDaemon
-SamsungFindMyMobile
-SecureFolder
+# ─── Knox & Secure Folder ────────────────────────────────────────────────────
 Knox_EA
 KnoxGuard
+SecureFolder
+KnoxVPN
+SamsungFindMyMobile
 
-# ─── DO NOT REMOVE — CRITICAL ────────────────────────────────────────────────
+# ─── Samsung Galaxy Store (saves ~80MB RAM, optional) ────────────────────────
+GalaxyStore
+GalaxyApps
+
+# ─── Misc Bloat ──────────────────────────────────────────────────────────────
+UnifiedDaemon
+SmartManager_v5
+SMusicPickerApp
+RedDropAgent
+SamsungIntelligence
+
+# ─── DO NOT REMOVE — SYSTEM CRITICAL ─────────────────────────────────────────
 # SystemUI
 # TelephonyUI
 # SecSettings
 # SettingsReceiver
-# SamsungIME
+# SamsungIME (default keyboard)
 # InputDevices
 # DownloadProvider
 # MediaProvider
+# TelephonyProvider
+# UserDictionaryProvider
+# FWUpgrade (firmware update OTA — safe to keep)
