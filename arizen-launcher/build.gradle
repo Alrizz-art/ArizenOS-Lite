@@ -1,37 +1,21 @@
-apply plugin: 'com.android.application'
-
-android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.3"
-
-    defaultConfig {
-        applicationId "com.arizen.launcher"
-        minSdkVersion 28
-        targetSdkVersion 28
-        versionCode 1
-        versionName "1.0"
+// Top-level build file
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
     }
-
-    buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
-        }
-        debug {
-            minifyEnabled false
-            debuggable true
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    // Keeping deps minimal for 2GB RAM target
-    // No Electron, no heavy frameworks
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
