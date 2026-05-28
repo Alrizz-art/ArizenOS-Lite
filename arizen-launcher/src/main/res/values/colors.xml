@@ -1,36 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    ArizenOS Lite — Design Tokens
-    AMOLED dark, matte surfaces, subtle glow
--->
 <resources>
-    <!-- Backgrounds -->
     <color name="bg_primary">#000000</color>
-    <color name="bg_card">#0F0F0F</color>
-    <color name="bg_surface">#1A1A1A</color>
-    <color name="bg_dock">#111111</color>
-
-    <!-- Text -->
+    <color name="bg_card">#0A0A0A</color>
+    <color name="bg_surface">#111111</color>
+    <color name="bg_dock">#0D0D0D</color>
+    <color name="bg_overlay">#CC000000</color>
     <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#88FFFFFF</color>
+    <color name="text_secondary">#99FFFFFF</color>
     <color name="text_tertiary">#44FFFFFF</color>
-
-    <!-- Accent -->
     <color name="accent_blue">#4A9EFF</color>
+    <color name="accent_blue_dim">#264A9EFF</color>
     <color name="accent_glow">#1A4A9EFF</color>
-    <color name="accent_white">#E8E8E8</color>
-
-    <!-- Graphite -->
+    <color name="accent_labs">#00D4AA</color>
+    <color name="accent_labs_dim">#1A00D4AA</color>
+    <color name="accent_red">#FF4444</color>
+    <color name="accent_green">#44FF88</color>
     <color name="graphite_light">#3A3A3C</color>
     <color name="graphite_mid">#2C2C2E</color>
     <color name="graphite_dark">#1C1C1E</color>
-
-    <!-- AI Bubble -->
-    <color name="ai_bubble_core">#4A9EFF</color>
-    <color name="ai_bubble_glow">#334A9EFF</color>
+    <color name="ai_orb_core">#4A9EFF</color>
+    <color name="ai_orb_glow">#334A9EFF</color>
     <color name="ai_pulse">#664A9EFF</color>
-
-    <!-- Status -->
+    <color name="ai_thinking">#FF9F0A</color>
+    <color name="ai_labs">#00D4AA</color>
     <color name="status_bar">#000000</color>
     <color name="nav_bar">#000000</color>
 </resources>
