@@ -2,12 +2,12 @@ apply plugin: 'com.android.application'
 
 android {
     namespace 'com.arizen.launcher'
-    compileSdk 28
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.arizen.launcher"
         minSdk 28
-        targetSdk 28
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }
