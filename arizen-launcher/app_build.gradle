@@ -1,0 +1,43 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.arizen.launcher'
+    compileSdk 28
+
+    defaultConfig {
+        applicationId "com.arizen.launcher"
+        minSdk 28
+        targetSdk 28
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // Disable unused features for lower APK size (2GB RAM target)
+    buildFeatures {
+        buildConfig false
+        aidl false
+        renderScript false
+        shaders false
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    // Minimal deps — no heavy frameworks for 2GB RAM target
+}
