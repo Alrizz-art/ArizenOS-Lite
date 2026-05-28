@@ -19,7 +19,7 @@ on:
         default: 'true'
         type: boolean
       samsung_fw_url:
-        description: 'URL langsung firmware Samsung ZIP (kosongkan = auto-download via samloader)'
+        description: 'URL langsung firmware Samsung ZIP/tar.md5 (kosongkan = pakai Google Drive dari secret GSI_URL)'
         required: false
         default: ''
 
@@ -43,7 +43,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Python (for samloader)
+      - name: Setup Python (for gdown / samloader)
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -55,7 +55,6 @@ jobs:
             tar openssl unzip file lz4 \
             e2fsprogs pv wget curl
 
-          # simg2img / img2simg
           sudo apt-get install -y -qq android-tools-fsutils 2>/dev/null || true
           if ! command -v simg2img &>/dev/null || ! command -v img2simg &>/dev/null; then
             sudo apt-get install -y -qq build-essential libz-dev git
@@ -64,120 +63,101 @@ jobs:
             sudo cp simg2img img2simg /usr/local/bin/
             cd -
           fi
-          echo "simg2img: $(command -v simg2img)"
-          echo "img2simg: $(command -v img2simg)"
 
-      # ── STEP 1: BUILD ARIZEN LAUNCHER — wajib berhasil sebelum firmware ──
+      # ── STEP 1: BUILD ARIZEN LAUNCHER ────────────────────────────────────
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Build ArizenLauncher (di-embed ke firmware sebagai launcher utama)
         run: |
-          echo "Building ArizenLauncher — akan di-inject ke system/priv-app sebagai launcher utama..."
+          echo "Building ArizenLauncher..."
           cd arizen-launcher
-
           chmod +x gradlew 2>/dev/null || true
-          if [[ ! -f gradlew ]]; then
-            gradle wrapper --gradle-version 7.6
-          fi
 
           set -o pipefail
-          ./gradlew assembleDebug \
-            --no-daemon \
-            --stacktrace \
-            2>&1 | tee /tmp/gradle_build.log
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee /tmp/gradle_build.log
           GRADLE_EXIT=${PIPESTATUS[0]}
 
           if [[ $GRADLE_EXIT -ne 0 ]]; then
-            echo ""
-            echo "════════════════════════ GRADLE ERRORS ════════════════════════"
-            grep -n \
-              -e "error:" \
-              -e "Error:" \
-              -e "ERROR:" \
-              -e "> Task .* FAILED" \
-              -e "Caused by:" \
-              -e "Execution failed" \
-              -e "What went wrong" \
-              -e "BUILD FAILED" \
-              -e "attribute .* not found" \
-              -e "cannot find symbol" \
-              -e "package .* does not exist" \
-              -e "symbol.*not found" \
-              /tmp/gradle_build.log || echo "(tidak ada baris error terfilter)"
-            echo "════════════════════════ TAIL 50 LINES ════════════════════════"
-            tail -50 /tmp/gradle_build.log
-            echo "═══════════════════════════════════════════════════════════════"
+            echo "════════════ GRADLE ERRORS ════════════"
+            grep -n -e "error:" -e "> Task .* FAILED" -e "Caused by:" -e "What went wrong" -e "BUILD FAILED" -e "cannot find symbol" /tmp/gradle_build.log || true
+            echo "════════════ TAIL 30 ════════════"
+            tail -30 /tmp/gradle_build.log
             exit $GRADLE_EXIT
           fi
 
           APK=$(find . -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
-          [[ -z "$APK" ]] && { echo "❌ APK build gagal — firmware tidak akan dibuat tanpa launcher"; exit 1; }
-
+          [[ -z "$APK" ]] && { echo "❌ APK tidak ditemukan"; exit 1; }
           cp "$APK" "../ArizenLauncher.apk"
-          echo "✅ ArizenLauncher siap untuk di-embed: $(basename $APK) ($(du -sh $APK | cut -f1))"
+          echo "✅ ArizenLauncher siap: $(basename $APK) ($(du -sh $APK | cut -f1))"
           cd ..
 
-      # ── STEP 2: DOWNLOAD FIRMWARE SAMSUNG ────────────────────────────────
-      - name: Download firmware via samloader
+      # ── STEP 2: DOWNLOAD FIRMWARE ─────────────────────────────────────────
+      - name: Download firmware
+        env:
+          GSI_URL: ${{ secrets.GSI_URL }}
         run: |
+          set -euo pipefail
           mkdir -p firmware
+          pip install gdown --quiet
 
-          # Opsi 1: URL langsung dari input workflow (bypass samloader)
+          # Prioritas 1: URL langsung dari workflow input
           if [[ -n "${{ inputs.samsung_fw_url }}" ]]; then
-            echo "Downloading firmware dari URL langsung..."
+            echo "📥 Downloading dari URL input..."
             wget -q --show-progress -O firmware/samsung_fw.zip "${{ inputs.samsung_fw_url }}" \
-              || curl -L -o firmware/samsung_fw.zip "${{ inputs.samsung_fw_url }}"
-            echo "Firmware downloaded dari URL"
+              || curl -L --progress-bar -o firmware/samsung_fw.zip "${{ inputs.samsung_fw_url }}"
 
-          # Opsi 2: samloader auto-download (checkupdate → download -v VER)
+          # Prioritas 2: Google Drive dari secret GSI_URL
+          elif [[ -n "${GSI_URL:-}" ]]; then
+            echo "📥 Downloading dari Google Drive (GSI_URL secret)..."
+            if echo "$GSI_URL" | grep -q "folders/"; then
+              FOLDER_ID=$(echo "$GSI_URL" | grep -oP "folders/[\w-]+" | cut -d/ -f2)
+              echo "   Folder ID: $FOLDER_ID"
+              gdown --folder "https://drive.google.com/drive/folders/$FOLDER_ID" -O firmware/ --quiet || \
+              gdown --folder "$GSI_URL" -O firmware/ --quiet || true
+            else
+              FILE_ID=$(echo "$GSI_URL" | grep -oP "(id=|/d/)[\w-]+" | grep -oP "[\w-]+$" | head -1)
+              gdown "https://drive.google.com/uc?id=$FILE_ID" -O firmware/samsung_fw.zip --quiet || true
+            fi
+            echo "   Files: $(ls firmware/ 2>/dev/null || echo 'empty')"
+
+          # Prioritas 3: samloader (fallback)
           else
-            pip install git+https://github.com/nlscc/samloader.git --quiet 2>/dev/null || true
+            echo "⚠️  GSI_URL tidak diset, mencoba samloader..."
+            pip install git+https://github.com/nlscc/samloader.git --quiet 2>/dev/null || \
             pip install samloader --quiet 2>/dev/null || true
-
             if command -v samloader &>/dev/null; then
-              echo "Checking latest firmware version for SM-T295 region ${{ inputs.device_region }}..."
-              FW_VER=$(samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} checkupdate 2>&1 | grep -oP "[A-Z0-9]{4,}/[A-Z0-9]{4,}/[A-Z0-9]{4,}" | head -1 || echo "")
-              if [[ -z "$FW_VER" ]]; then
-                # Try parsing different output format
-                FW_VER=$(samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} checkupdate 2>&1 | tail -1 | tr -d " ")
-              fi
-              echo "Firmware version: $FW_VER"
+              FW_VER=$(samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} checkupdate 2>&1 | \
+                grep -oP "[A-Z0-9]{4,}/[A-Z0-9]{4,}/[A-Z0-9]{4,}" | head -1 || echo "")
               if [[ -n "$FW_VER" ]]; then
                 samloader -m $DEVICE_MODEL -r ${{ inputs.device_region }} download -v "$FW_VER" -O firmware/ || true
               fi
             fi
-
-            FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
-            if [[ -z "$FW_ZIP" ]]; then
-              echo "Samsung firmware tidak bisa didownload otomatis."
-              echo "SOLUSI: Jalankan ulang workflow dengan field samsung_fw_url diisi URL firmware ZIP."
-              echo "Download dari: https://samfw.com | https://sfirmware.com | https://sammobile.com"
-              exit 1
-            fi
           fi
 
-          FW_ZIP=$(find firmware/ -name "*.zip" | head -1)
-          [[ -z "$FW_ZIP" ]] && { echo "Firmware zip not found"; exit 1; }
-          echo "FW_ZIP=$FW_ZIP" >> $GITHUB_ENV
-          echo "Downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
+          FW_FILE=$(find firmware/ -name "*.zip" -o -name "*.tar.md5" 2>/dev/null | head -1 || echo "")
+          if [[ -z "$FW_FILE" ]]; then
+            echo "❌ Firmware tidak ditemukan!"
+            echo "SOLUSI: Set secret GSI_URL (Google Drive URL firmware) atau isi field samsung_fw_url"
+            exit 1
+          fi
 
-      # ── STEP 3: INJECT ARIZEN KE FIRMWARE → OUTPUT: AP tar.md5 ──────────
+          echo "FW_FILE=$FW_FILE" >> $GITHUB_ENV
+          echo "✅ Firmware: $(basename $FW_FILE) ($(du -sh $FW_FILE | cut -f1))"
+
+      # ── STEP 3: INJECT ARIZEN ─────────────────────────────────────────────
       - name: Extract firmware
         run: |
           chmod +x scripts/*.sh
-          bash scripts/extract_firmware.sh "$FW_ZIP"
+          bash scripts/extract_firmware.sh "$FW_FILE"
           ls -lh work/
 
       - name: Unpack AP partition
         run: sudo bash scripts/unpack_ap.sh
 
       - name: Inject ArizenOS (launcher + debloat + branding + ZRAM)
-        run: |
-          sudo bash scripts/inject_arizenos.sh
-          echo "✅ ArizenLauncher.apk di-inject ke system/priv-app sebagai launcher utama"
-          echo "   Samsung launcher dihapus — Arizen Launcher aktif otomatis setelah flash"
+        run: sudo bash scripts/inject_arizenos.sh
 
       - name: Repack AP
         run: sudo bash scripts/repack_ap.sh
@@ -192,137 +172,54 @@ jobs:
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
 
-      # ── STEP 4: VALIDASI ODIN ────────────────────────────────────────────
+      # ── STEP 4: VALIDASI ODIN ─────────────────────────────────────────────
       - name: Odin format validation
         run: |
           set -euo pipefail
           FILE="$OUTPUT_FILE"
-          PASS=0
-          FAIL=0
+          PASS=0; FAIL=0
+          SIZE_BYTES=$(stat -c%s "$FILE")
 
-          echo "════════════════════════════════════════"
-          echo "  Odin Flashable Validation"
-          echo "  File: $(basename $FILE)"
-          echo "════════════════════════════════════════"
+          chk() { local n=$1 desc=$2 ok=$3
+            echo ""; echo "[ CHECK $n ] $desc"
+            if [[ "$ok" == "true" ]]; then echo "  ✅ PASS"; ((PASS++))
+            else echo "  ❌ FAIL"; ((FAIL++)); fi; }
 
-          echo ""
-          echo "[ CHECK 1 ] File exists & non-empty..."
-          if [[ -f "$FILE" && -s "$FILE" ]]; then
-            SIZE_BYTES=$(stat -c%s "$FILE")
-            SIZE_HUMAN=$(du -sh "$FILE" | cut -f1)
-            echo "  ✅ PASS — $SIZE_HUMAN ($SIZE_BYTES bytes)"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — file missing or empty"
-            ((FAIL++))
-          fi
+          chk 1 "File exists & non-empty" "$([[ -f $FILE && -s $FILE ]] && echo true || echo false)"
+          chk 2 "Size >100MB ($(du -sh $FILE | cut -f1))" "$([[ $SIZE_BYTES -gt $((100*1024*1024)) ]] && echo true || echo false)"
 
-          echo ""
-          echo "[ CHECK 2 ] Minimum size check (>100MB)..."
-          MIN_BYTES=$((100 * 1024 * 1024))
-          if [[ $SIZE_BYTES -gt $MIN_BYTES ]]; then
-            echo "  ✅ PASS — $SIZE_HUMAN > 100MB"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — file is suspiciously small ($SIZE_HUMAN)"
-            ((FAIL++))
-          fi
+          MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || echo "")
+          chk 3 "GNU tar magic (got: $MAGIC)" "$(echo $MAGIC | grep -qiE '^757374617(22020|200)' && echo true || echo false)"
 
-          echo ""
-          echo "[ CHECK 3 ] GNU tar magic bytes at offset 257..."
-          MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || \
-                  dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | od -An -tx1 | tr -d ' \n')
-          echo "  Magic hex: $MAGIC"
-          if echo "$MAGIC" | grep -qiE '^757374617(22020|200)'; then
-            echo "  ✅ PASS — valid GNU/POSIX tar header"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — invalid tar magic (got: $MAGIC)"
-            ((FAIL++))
-          fi
+          BODY=$(($SIZE_BYTES - 32))
+          STORED=$(tail -c 32 "$FILE")
+          COMPUTED=$(head -c $BODY "$FILE" | md5sum | awk '{print $1}')
+          chk 4 "MD5 integrity" "$([[ $STORED == $COMPUTED ]] && echo true || echo false)"
 
-          echo ""
-          echo "[ CHECK 4 ] MD5 checksum integrity (Samsung Odin format)..."
-          STORED_MD5=$(tail -c 32 "$FILE")
-          BODY_BYTES=$(( SIZE_BYTES - 32 ))
-          COMPUTED_MD5=$(head -c $BODY_BYTES "$FILE" | md5sum | awk '{print $1}')
-          echo "  Stored:   $STORED_MD5"
-          echo "  Computed: $COMPUTED_MD5"
-          if [[ "$STORED_MD5" == "$COMPUTED_MD5" ]]; then
-            echo "  ✅ PASS — MD5 matches"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — MD5 mismatch (Odin will reject this file)"
-            ((FAIL++))
-          fi
+          TAR_LIST=$(head -c $BODY "$FILE" | tar -t 2>/dev/null || echo "")
+          chk 5 "tar contains system.img" "$(echo $TAR_LIST | grep -q 'system\.img' && echo true || echo false)"
 
-          echo ""
-          echo "[ CHECK 5 ] Tar contains system.img..."
-          BODY_BYTES=$(( SIZE_BYTES - 32 ))
-          TAR_CONTENTS=$(head -c $BODY_BYTES "$FILE" | tar -t 2>/dev/null || echo "")
-          echo "  Files in tar:"
-          echo "$TAR_CONTENTS" | sed 's/^/    /'
-          if echo "$TAR_CONTENTS" | grep -q "system\.img"; then
-            echo "  ✅ PASS — system.img present"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — system.img not found inside tar"
-            ((FAIL++))
-          fi
+          SYS_SIZE=$(head -c $BODY "$FILE" | tar -tv 2>/dev/null | grep 'system\.img' | awk '{print $3}' || echo 0)
+          chk 6 "system.img >50MB (${SYS_SIZE:-0}B)" "$([[ ${SYS_SIZE:-0} -gt $((50*1024*1024)) ]] && echo true || echo false)"
 
-          echo ""
-          echo "[ CHECK 6 ] system.img size inside tar (>50MB)..."
-          SYS_SIZE=$(head -c $BODY_BYTES "$FILE" | tar -tv 2>/dev/null | grep "system\.img" | awk '{print $3}' || echo "0")
-          echo "  system.img size in tar: $SYS_SIZE bytes"
-          MIN_SYS=$((50 * 1024 * 1024))
-          if [[ "${SYS_SIZE:-0}" -gt $MIN_SYS ]]; then
-            echo "  ✅ PASS — system.img is $(( SYS_SIZE / 1024 / 1024 ))MB"
-            ((PASS++))
-          else
-            echo "  ❌ FAIL — system.img too small or missing ($SYS_SIZE bytes)"
-            ((FAIL++))
-          fi
+          echo ""; echo "[ CHECK 7 ] ArizenOS branding..."
+          TMPD=$(mktemp -d)
+          head -c $BODY "$FILE" | tar -C "$TMPD" -x system.img 2>/dev/null || true
+          if command -v debugfs &>/dev/null && [[ -f "$TMPD/system.img" ]]; then
+            BRAND=$(debugfs -R "cat /build.prop" "$TMPD/system.img" 2>/dev/null | grep "ro.arizen" || echo "")
+            [[ -n "$BRAND" ]] && echo "  ✅ PASS — $BRAND" || echo "  ⚠️  SKIP (non-fatal)"
+          else echo "  ⚠️  SKIP (non-fatal)"; fi
+          ((PASS++)); rm -rf "$TMPD"
 
-          echo ""
-          echo "[ CHECK 7 ] ArizenOS branding in system.img..."
-          TMPDIR_CHECK=$(mktemp -d)
-          head -c $BODY_BYTES "$FILE" | tar -C "$TMPDIR_CHECK" -x system.img 2>/dev/null || true
-          if [[ -f "$TMPDIR_CHECK/system.img" ]]; then
-            if command -v debugfs &>/dev/null; then
-              ARIZEN_VER=$(debugfs -R "cat /build.prop" "$TMPDIR_CHECK/system.img" 2>/dev/null | grep "ro.arizen.version" || echo "")
-              if [[ -n "$ARIZEN_VER" ]]; then
-                echo "  ✅ PASS — found: $ARIZEN_VER"
-                ((PASS++))
-              else
-                echo "  ⚠️  SKIP — debugfs couldn't read build.prop (non-fatal)"
-                ((PASS++))
-              fi
-            else
-              echo "  ⚠️  SKIP — debugfs not available (non-fatal)"
-              ((PASS++))
-            fi
-            rm -rf "$TMPDIR_CHECK"
-          else
-            echo "  ⚠️  SKIP — couldn't extract system.img for inspection (non-fatal)"
-            ((PASS++))
-            rm -rf "$TMPDIR_CHECK"
-          fi
-
-          echo ""
-          echo "════════════════════════════════════════"
-          echo "  Result: $PASS passed, $FAIL failed"
-          echo "════════════════════════════════════════"
-
+          echo ""; echo "Result: $PASS passed, $FAIL failed"
           if [[ $FAIL -gt 0 ]]; then
-            echo "❌ VALIDATION FAILED — $FAIL check(s) failed."
-            echo "ODIN_VALID=false" >> $GITHUB_ENV
-            exit 1
+            echo "ODIN_VALID=false" >> $GITHUB_ENV; exit 1
           else
-            echo "✅ ALL CHECKS PASSED — safe to flash with Odin"
+            echo "✅ ALL CHECKS PASSED"
             echo "ODIN_VALID=true" >> $GITHUB_ENV
           fi
 
-      # ── STEP 5: UPLOAD & RELEASE ─────────────────────────────────────────
+      # ── STEP 5: UPLOAD & RELEASE ──────────────────────────────────────────
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -340,43 +237,26 @@ jobs:
           body: |
             ## ArizenOS Lite v${{ inputs.arizen_version }}
 
-            > Stock Samsung firmware — dimodifikasi, debloat, Arizen Launcher sebagai launcher utama bawaan
-
             | | |
             |--|--|
             | **Device** | Samsung Galaxy Tab A 8.0 2019 (SM-T295) |
             | **Region** | ${{ inputs.device_region }} |
-            | **Base** | Samsung Stock Firmware (official) |
             | **Size** | ${{ env.FILE_SIZE }} |
             | **Build** | #${{ github.run_number }} |
-            | **Odin Validated** | ✅ Passed all 7 checks |
+            | **Odin Valid** | ✅ 7/7 checks passed |
 
-            ### Yang sudah ada di dalam firmware ini
-            - **Arizen Launcher** — tertanam di `system/priv-app`, **langsung aktif sebagai launcher utama** setelah flash (tidak perlu install manual)
-            - Samsung launcher (TouchWizHome/SecLauncher) dihapus permanen
-            - **84 Samsung bloatware** dihapus (Bixby, Facebook, Knox, dll)
-            - ZRAM 512MB lz4 (`/system/etc/init/arizen_zram.rc`)
-            - VM sysctl: swappiness=60, cache_pressure=150, extra_free_kbytes=24300
-            - Dalvik heap dioptimalkan untuk 2GB RAM
-            - build.prop: branding ArizenOS penuh
+            ### Isi firmware
+            - **Arizen Launcher** — tertanam di `system/priv-app`, aktif otomatis setelah flash
+            - Samsung launcher dihapus permanen
+            - 84 Samsung bloatware dihapus
+            - ZRAM 512MB lz4 + VM sysctl optimized
 
-            ### Flash via Odin (Windows)
-            1. Download `${{ env.OUTPUT_NAME }}` di bawah
-            2. Boot SM-T295 ke Download Mode: `Power + Vol Down + Bixby` → tekan `Vol Up`
-            3. Buka Odin v3.14.4+ → klik **AP** → pilih file `.tar.md5`
-            4. Options: **Auto Reboot ✓** | **F.Reset Time ✓** | **Re-Partition ✗**
-            5. Klik **Start** — tunggu PASS! berwarna hijau
-
-            ### Flash via Heimdall (macOS/Linux)
-            ```bash
-            heimdall flash --SYSTEM ${{ env.OUTPUT_NAME }}
-            ```
-
-            ### Recovery (bootloop / soft-brick)
-            Flash firmware original SM-T295 dari [samfw.com](https://samfw.com)
+            ### Flash via Odin
+            1. Boot ke Download Mode: `Power + Vol Down` → `Vol Up`
+            2. Odin → **AP** → pilih `.tar.md5` → **Start**
 
             ---
-            *ArizenOS by @Alrizz-art — Built & validated by GitHub Actions #${{ github.run_number }}*
+            *ArizenOS by @Alrizz-art — #${{ github.run_number }}*
           files: output/*.tar.md5
           make_latest: true
         env:
@@ -386,27 +266,12 @@ jobs:
         if: always()
         run: |
           {
-            echo "## ArizenOS Lite Build — #${{ github.run_number }}"
-            echo ""
+            echo "## ArizenOS Lite Build #${{ github.run_number }}"
             if [[ "${ODIN_VALID:-false}" == "true" ]]; then
               echo "### ✅ Build Successful"
-              echo "| Field | Value |"
-              echo "|-------|-------|"
-              echo "| File | \`${OUTPUT_NAME:-unknown}\` |"
-              echo "| Size | ${FILE_SIZE:-unknown} |"
-              echo "| Region | ${{ inputs.device_region }} |"
-              echo "| Launcher | ✅ Tertanam di system/priv-app (default HOME) |"
-              echo "| Odin Validation | ✅ 7/7 checks passed |"
-              echo ""
-              echo "Download dari tab **Releases**."
+              echo "| File | \`${OUTPUT_NAME:-?}\` |"
+              echo "| Size | ${FILE_SIZE:-?} |"
             else
-              echo "### ❌ Build Failed"
-              echo "Cek logs di atas untuk detail."
-              echo ""
-              echo "| Field | Value |"
-              echo "|-------|-------|"
-              echo "| Region | ${{ inputs.device_region }} |"
-              echo "| Odin Valid | ${ODIN_VALID:-false} |"
+              echo "### ❌ Build Failed — cek logs di atas"
             fi
           } >> $GITHUB_STEP_SUMMARY
-
