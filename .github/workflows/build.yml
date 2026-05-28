@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       device_region:
-        description: 'Region firmware SM-T295 (XSE=Indonesia, XSP=Global, INS=India, EUX=Europe)'
+        description: 'Region firmware SM-T295 (XID=Indonesia, XSE=Southeast Asia, XSP=Global)'
         required: true
-        default: 'XSE'
+        default: 'XID'
         type: choice
-        options: [XSE, XSP, INS, EUX, DBT, BTU, SER, THL, OXM]
+        options: [XID, XSE, XSP, INS, EUX, DBT, BTU, SER, THL, OXM]
       arizen_version:
         description: 'Versi ArizenOS (contoh: 1.0)'
         required: true
