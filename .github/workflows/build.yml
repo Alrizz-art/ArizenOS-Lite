@@ -63,11 +63,13 @@ jobs:
           echo "simg2img: $(command -v simg2img)"
           echo "img2simg: $(command -v img2simg)"
 
-      # ── BUILD ARIZEN LAUNCHER APK ──────────────────────────────────────────
+      # ── BUILD ARIZEN LAUNCHER APK (optional — pipeline continues if fails) ──
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Build ArizenLauncher.apk
+        continue-on-error: true
+        id: build_apk
         run: |
           echo "Building ArizenLauncher from source..."
           cd arizen-launcher
@@ -77,19 +79,29 @@ jobs:
             gradle wrapper --gradle-version 7.6
           fi
 
-          ./gradlew assembleRelease \
+          ./gradlew assembleDebug \
             --no-daemon \
             --stacktrace \
-            -Pandroid.suppressUnsupportedCompileSdk=28 \
-            2>&1 | tail -50
+            2>&1 | tail -60
 
-          APK=$(find . -name "*.apk" -path "*/release/*" 2>/dev/null | head -1)
+          APK=$(find . -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
           [[ -z "$APK" ]] && APK=$(find . -name "*.apk" 2>/dev/null | head -1)
-          [[ -z "$APK" ]] && { echo "APK not found after build!"; exit 1; }
+          if [[ -z "$APK" ]]; then
+            echo "APK not found — launcher will be skipped in firmware injection"
+            exit 1
+          fi
 
           cp "$APK" "../ArizenLauncher.apk"
           echo "APK built: $(basename $APK) ($(du -sh $APK | cut -f1))"
           cd ..
+
+      - name: APK build status
+        run: |
+          if [[ -f "ArizenLauncher.apk" ]]; then
+            echo "✅ ArizenLauncher.apk ready ($(du -sh ArizenLauncher.apk | cut -f1))"
+          else
+            echo "⚠️  ArizenLauncher.apk not built — firmware will be built WITHOUT launcher injection"
+          fi
 
       # ── DOWNLOAD FIRMWARE ────────────────────────────────────────────────
       - name: Download firmware via samloader
@@ -106,7 +118,7 @@ jobs:
           echo "FW_ZIP=$FW_ZIP" >> $GITHUB_ENV
           echo "Downloaded: $(basename $FW_ZIP) ($(du -sh $FW_ZIP | cut -f1))"
 
-      # ── BUILD FIRMWARE ───────────────────────────────────────────────────
+      # ── BUILD AP tar.md5 ─────────────────────────────────────────────────
       - name: Extract firmware
         run: |
           chmod +x scripts/*.sh
@@ -122,7 +134,7 @@ jobs:
       - name: Repack AP
         run: sudo bash scripts/repack_ap.sh
 
-      - name: Package Odin flashable
+      - name: Package Odin flashable (AP tar.md5)
         run: |
           export ARIZEN_VERSION="${{ inputs.arizen_version }}"
           bash scripts/package_odin.sh
@@ -132,7 +144,7 @@ jobs:
           echo "OUTPUT_NAME=$(basename $OUTPUT)" >> $GITHUB_ENV
           echo "FILE_SIZE=$(du -sh $OUTPUT | cut -f1)" >> $GITHUB_ENV
 
-      # ── ODIN VALIDATION — checks sebelum upload ───────────────────────────
+      # ── ODIN VALIDATION ───────────────────────────────────────────────────
       - name: Odin format validation
         run: |
           set -euo pipefail
@@ -145,7 +157,6 @@ jobs:
           echo "  File: $(basename $FILE)"
           echo "════════════════════════════════════════"
 
-          # ── CHECK 1: File exists & non-empty
           echo ""
           echo "[ CHECK 1 ] File exists & non-empty..."
           if [[ -f "$FILE" && -s "$FILE" ]]; then
@@ -158,7 +169,6 @@ jobs:
             ((FAIL++))
           fi
 
-          # ── CHECK 2: Minimum size (system.img > 100MB in any real firmware)
           echo ""
           echo "[ CHECK 2 ] Minimum size check (>100MB)..."
           MIN_BYTES=$((100 * 1024 * 1024))
@@ -170,25 +180,19 @@ jobs:
             ((FAIL++))
           fi
 
-          # ── CHECK 3: GNU tar magic bytes
-          # GNU tar header: bytes 257-262 = "ustar  " (with two spaces + null)
-          # POSIX tar:       bytes 257-262 = "ustar\0"
-          # Either is accepted by Odin — just not a corrupt/empty header
           echo ""
           echo "[ CHECK 3 ] GNU tar magic bytes at offset 257..."
           MAGIC=$(dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | xxd -p 2>/dev/null || \
                   dd if="$FILE" bs=1 skip=257 count=6 2>/dev/null | od -An -tx1 | tr -d ' \n')
           echo "  Magic hex: $MAGIC"
-          # "ustar  " = 75737461722020 or "ustar\0" = 757374617200
           if echo "$MAGIC" | grep -qiE '^757374617(22020|200)'; then
             echo "  ✅ PASS — valid GNU/POSIX tar header"
             ((PASS++))
           else
-            echo "  ❌ FAIL — invalid tar magic (got: $MAGIC, expected: 757374617...)"
+            echo "  ❌ FAIL — invalid tar magic (got: $MAGIC)"
             ((FAIL++))
           fi
 
-          # ── CHECK 4: MD5 strip + verify
           echo ""
           echo "[ CHECK 4 ] MD5 checksum integrity (Samsung Odin format)..."
           STORED_MD5=$(tail -c 32 "$FILE")
@@ -204,7 +208,6 @@ jobs:
             ((FAIL++))
           fi
 
-          # ── CHECK 5: Tar contains system.img
           echo ""
           echo "[ CHECK 5 ] Tar contains system.img..."
           BODY_BYTES=$(( SIZE_BYTES - 32 ))
@@ -219,7 +222,6 @@ jobs:
             ((FAIL++))
           fi
 
-          # ── CHECK 6: system.img not zero-sized inside tar
           echo ""
           echo "[ CHECK 6 ] system.img size inside tar (>50MB)..."
           SYS_SIZE=$(head -c $BODY_BYTES "$FILE" | tar -tv 2>/dev/null | grep "system\.img" | awk '{print $3}' || echo "0")
@@ -233,22 +235,19 @@ jobs:
             ((FAIL++))
           fi
 
-          # ── CHECK 7: ArizenOS build.prop inside system.img
           echo ""
           echo "[ CHECK 7 ] ArizenOS branding in system.img..."
-          # Extract system.img from tar and check build.prop
           BODY_BYTES=$(( SIZE_BYTES - 32 ))
           TMPDIR_CHECK=$(mktemp -d)
           head -c $BODY_BYTES "$FILE" | tar -C "$TMPDIR_CHECK" -x system.img 2>/dev/null || true
           if [[ -f "$TMPDIR_CHECK/system.img" ]]; then
-            # Try to read build.prop from ext4 image
             if command -v debugfs &>/dev/null; then
               ARIZEN_VER=$(debugfs -R "cat /build.prop" "$TMPDIR_CHECK/system.img" 2>/dev/null | grep "ro.arizen.version" || echo "")
               if [[ -n "$ARIZEN_VER" ]]; then
                 echo "  ✅ PASS — found: $ARIZEN_VER"
                 ((PASS++))
               else
-                echo "  ⚠️  SKIP — debugfs couldn't read build.prop (sparse img, non-fatal)"
+                echo "  ⚠️  SKIP — debugfs couldn't read build.prop (non-fatal)"
                 ((PASS++))
               fi
             else
@@ -262,14 +261,13 @@ jobs:
             rm -rf "$TMPDIR_CHECK"
           fi
 
-          # ── RESULT ─────────────────────────────────────────────────────────
           echo ""
           echo "════════════════════════════════════════"
           echo "  Result: $PASS passed, $FAIL failed"
           echo "════════════════════════════════════════"
 
           if [[ $FAIL -gt 0 ]]; then
-            echo "❌ VALIDATION FAILED — $FAIL check(s) failed. File will NOT be uploaded."
+            echo "❌ VALIDATION FAILED — $FAIL check(s) failed."
             echo "ODIN_VALID=false" >> $GITHUB_ENV
             exit 1
           else
@@ -351,6 +349,7 @@ jobs:
               echo "| Size | ${FILE_SIZE:-unknown} |"
               echo "| Region | ${{ inputs.device_region }} |"
               echo "| Odin Validation | ✅ 7/7 checks passed |"
+              echo "| APK Build | ${{ steps.build_apk.outcome }} |"
               echo ""
               echo "Download from the **Releases** tab."
             else
